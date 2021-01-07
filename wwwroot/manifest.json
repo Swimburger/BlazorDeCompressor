@@ -1,15 +1,20 @@
 {
-  "name": "BlazorDeCompressor",
-  "short_name": "BlazorDeCompressor",
+  "name": "GZIP de/compressor",
+  "short_name": "GZIP de/compressor",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#03173d",
+  "theme_color": "#007bff",
   "icons": [
     {
-      "src": "icon-512.png",
+      "src": "/assets/512x512.png",
       "type": "image/png",
       "sizes": "512x512"
+    },
+    {
+      "src": "/assets/192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
     }
   ]
 }
