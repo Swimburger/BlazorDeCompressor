@@ -1,0 +1,192 @@
+﻿@using System.IO
+@using System.IO.Compression
+@inject BlazorDownloadFile.IBlazorDownloadFileService BlazorDownloadFileService
+
+<div class="form-group">
+    <div class="form-check form-check-inline">
+        <input id="radio-compress" class="form-check-input" type="radio"
+            checked="@(compressionMode == CompressionMode.Compress)"
+            @onchange="@(() => compressionMode = CompressionMode.Compress)">
+        <label class="form-check-label" for="radio-compress">Compress</label>
+    </div>
+    <div class="form-check form-check-inline">
+        <input id="radio-decompress" class="form-check-input" type="radio"
+            checked="@(compressionMode == CompressionMode.Decompress)"
+            @onchange="@(() => compressionMode = CompressionMode.Decompress)">
+        <label class="form-check-label" for="radio-decompress">Decompress</label>
+    </div>
+</div>
+@if (compressionMode == CompressionMode.Compress)
+{
+<div class="form-group">
+    <label>Compression Level:</label>
+    <div class="form-group">
+        <div class="form-check form-check-inline">
+            <input id="radio-optimal" class="form-check-input" type="radio"
+                checked="@(compressionLevel == CompressionLevel.Optimal)"
+                @onchange="@(() => compressionLevel = CompressionLevel.Optimal)">
+            <label class="form-check-label" for="radio-optimal">Optimal</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="radio-fastest" class="form-check-input" type="radio"
+                checked="@(compressionLevel == CompressionLevel.Fastest)"
+                @onchange="@(() => compressionLevel = CompressionLevel.Fastest)">
+            <label class="form-check-label" for="radio-fastest">Fastest</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="radio-no-compression" class="form-check-input" type="radio"
+                checked="@(compressionLevel == CompressionLevel.NoCompression)"
+                @onchange="@(() => compressionLevel = CompressionLevel.NoCompression)">
+            <label class="form-check-label" for="radio-no-compression">No Compression</label>
+        </div>
+    </div>
+</div>
+}
+
+<div class="form-group">
+    <div class="custom-file">
+        <InputFile OnChange="OnFilesChange" multiple class="custom-file-input" />
+        @if (compressionMode == CompressionMode.Compress)
+        {
+            <label class="custom-file-label" for="customFile">Choose files to compress to gzip</label>
+        }
+        else
+        {
+            <label class="custom-file-label" for="customFile">Choose gzip files to decompress</label>
+        }
+    </div>
+</div>
+<div class="form-group">
+    @if (compressionMode == CompressionMode.Compress)
+    {
+        <button role="button" class="btn btn-primary" @onclick="CompressFiles" disabled="@(!anyFiles)">Compress Files</button>
+    }
+    else
+    {
+        <button role="button" class="btn btn-primary" @onclick="DecompressFiles" disabled="@(!anyFiles)">Decompress Files</button>
+    }
+    &nbsp;
+    @if(!anyFiles){
+        <span class="text-danger">No files selected</span>
+    }
+</div>
+<ul class="list-group">
+@foreach (var file in files)
+{
+    <li class="list-group-item">
+        @file.OriginalName
+        @if(file.Status == "Compressing" || file.Status == "Decompressing")
+        {
+            <div class="spinner-grow text-primary spinner-grow-sm" role="status">
+                <span class="sr-only">@file.Status</span>
+            </div>
+        }
+        &nbsp;
+        @if(file.Status.StartsWith("Error"))
+        {
+            <br />
+            <span class="text-danger">⚠ @file.Status</span>
+        }
+        @if(file.Status == "Finished")
+        {
+            <span class="text-success">✔ Finished</span>
+        }
+    </li>
+}
+</ul>
+
+@code {
+    private CompressionMode compressionMode = CompressionMode.Compress;
+    private CompressionLevel compressionLevel = CompressionLevel.Optimal;
+    private List<Models.File> files = new List<Models.File>();
+    private bool anyFiles => files.Any();
+
+    private void OnFilesChange(InputFileChangeEventArgs e)
+    {
+        files.Clear();
+        files.AddRange(e.GetMultipleFiles().Select(f => new Models.File
+        {
+            BrowserFile = f,
+            OriginalName = f.Name,
+            Status = "To Process"
+        }));
+    }
+
+    private async Task CompressFiles()
+    {
+        var tasks = new List<Task>();
+        foreach (var file in files)
+        {
+            var task = Task.Run(async () => 
+            {
+                file.Status = "Compressing";
+                file.NewName = $"{file.OriginalName}.gz";
+                StateHasChanged();
+                
+                try
+                {
+                    var browserFile = file.BrowserFile;
+                    var buffer = new byte[browserFile.Size];
+                    await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
+                    using (var outputStream = new MemoryStream())
+                    {
+                        using (var compressionStream = new GZipStream(outputStream, compressionLevel))
+                        {
+                            await compressionStream.WriteAsync(buffer, 0, buffer.Length);
+                        }
+                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputStream.ToArray(), "application/octet-stream");
+                    }
+
+                    file.Status = "Finished";
+                }
+                catch(Exception ex){
+                    file.Status = $"Error: {ex.Message}";
+                }
+
+                StateHasChanged();
+            });
+            tasks.Add(task);
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task DecompressFiles()
+    {
+        var tasks = new List<Task>();
+        foreach (var file in files)
+        {
+            var task = Task.Run(async () => 
+            {
+                file.Status = "Decompressing";
+                file.NewName = file.OriginalName.Replace(".gz", "");
+                StateHasChanged();
+
+                try
+                {
+                    var browserFile = file.BrowserFile;
+                    var buffer = new byte[browserFile.Size];
+                    await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
+                    using (var inputStream = new MemoryStream(buffer))
+                    using (var outputStream = new MemoryStream())
+                    {
+                        using (var compressionStream = new GZipStream(inputStream, CompressionMode.Decompress))
+                        {
+                            await compressionStream.CopyToAsync(outputStream);
+                        }
+                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputStream.ToArray(), "application/octet-stream");
+                    }
+
+                    file.Status = "Finished";
+                }
+                catch(Exception ex){
+                    file.Status = $"Error: {ex.Message}";
+                }
+                StateHasChanged();
+            });
+            tasks.Add(task);
+        }
+
+        await Task.WhenAll(tasks);
+    }
+}

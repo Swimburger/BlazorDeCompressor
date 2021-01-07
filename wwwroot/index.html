@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>BlazorDeCompressor</title>
+    <meta name="description" content="Use this online GZIP tool to compress and decompress file right in the browser" />
+    <meta property="og:title" content="Online GZIP de/compressor" />
+    <meta name="twitter:title" content="Online GZIP de/compressor" />
+    <meta property="og:description" content="Use this online GZIP tool to compress and decompress file right in the browser" />
+    <meta name="twitter:description" content="Use this online GZIP tool to compress and decompress file right in the browser" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@RealSwimburger" />
+    <meta name="twitter:creator" content="@RealSwimburger" />
+    <base href="/" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="manifest.json" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="display-4">Online GZIP de/compressor</h1>
+        <p style="font-size: 1.1rem;">
+            This tool can compress and decompress files using the GZIP algorithm.
+            The files are compressed/decompress right inside of your browser without transmitting the files to a server.
+            You can also use this tool offline when you install it on your device.
+        </p>
+        <div class="alert alert-primary">
+            <ul style="font-size: 1.2rem;margin: 0;padding-left: 15px;" class="font-weight-bold">
+                <li>Files are compress/decompressed on your device</li>
+                <li>No Files are transmitted</li>
+                <li>Size limit depends on the limitations of your browser</li>
+            </ul>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div id="app">Loading...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>navigator.serviceWorker.register('service-worker.js');</script>
+</body>
+
+</html>
