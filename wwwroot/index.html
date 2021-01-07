@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" class="h-100">
 
 <head>
     <meta charset="utf-8" />
@@ -22,8 +22,27 @@
     <link rel="apple-touch-icon" sizes="512x512" href="/assets/512x512.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-40212618-4"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-40212618-4');
+    </script>
     <style>
+        footer {
+            background-color: #eee;
+        }
+
+        footer a {
+            text-decoration: underline;
+        }
+
+        footer img {
+            float: left;
+            margin-right: 5px;
+        }
+
         #blazor-error-ui {
             background: lightyellow;
             bottom: 0;
@@ -45,34 +64,46 @@
     </style>
 </head>
 
-<body>
-    <div class="container">
-        <h1 class="display-4">Online GZIP de/compressor</h1>
-        <p style="font-size: 1.1rem;">
-            This tool can compress and decompress files using the GZIP algorithm.
-            The files are compressed/decompress right inside of your browser without transmitting the files to a server.
-        </p>
-        <div class="alert alert-primary">
-            <ul style="font-size: 1.2rem;margin: 0;padding-left: 15px;" class="font-weight-bold">
-                <li>Files are compress/decompressed on your device</li>
-                <li>No files are transmitted</li>
-                <li>Size limit depends on the limitations of your browser</li>
-                <li>Works offline/installable</li>
-            </ul>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <div id="app">Loading...</div>
+<body class="d-flex flex-column h-100">
+    <main class="flex-shrink-0">
+        <div class="container">
+            <h1 class="display-4">Online GZIP de/compressor</h1>
+            <p style="font-size: 1.1rem;">
+                This tool can compress and decompress files using the GZIP algorithm.
+                The files are compressed/decompress right inside of your browser without transmitting the files to a
+                server.
+            </p>
+            <div class="alert alert-primary">
+                <ul style="font-size: 1.2rem;margin: 0;padding-left: 15px;" class="font-weight-bold">
+                    <li>Files are compress/decompressed on your device</li>
+                    <li>No files are transmitted</li>
+                    <li>Size limit depends on the limitations of your browser</li>
+                    <li>Works offline/installable</li>
+                </ul>
             </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div id="app">Loading...</div>
+                </div>
+            </div>
+
         </div>
 
-    </div>
-
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
-    </div>
+        <div id="blazor-error-ui">
+            An unhandled error has occurred.
+            <a href="" class="reload">Reload</a>
+            <a class="dismiss">🗙</a>
+        </div>
+    </main>
+    <footer class="footer mt-auto py-3">
+        <div class="container">
+            <img src="https://swimburger.net/content/img/burger.svg" width="40" height="22" alt="Swimburger logo" />
+            Tool built using Blazor WebAssembly by Niels Swimberghe; Follow Niels' blog at
+            <a href="https://swimburger.net">swimburger.net</a> or on <a
+                href="https://twitter.com/RealSwimburger">Twitter</a>;
+            <a href="https://privacypolicies.com/privacy/view/95b2095f4609044d9618c21b06f5df75">Privacy Policy</a>
+        </div>
+    </footer>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>navigator.serviceWorker.register('service-worker.js');</script>
 </body>
