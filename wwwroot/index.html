@@ -5,7 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>GZIP decompress/compress files from your browser</title>
-    <meta name="description" content="Use this online GZIP tool to compress and decompress files right in the browser" />
+    <meta name="description"
+        content="Use this online GZIP tool to compress and decompress files right in the browser" />
     <meta property="og:title" content="GZIP decompress/compress files from your browser" />
     <meta name="twitter:title" content="GZIP decompress/compress files from your browser" />
     <meta property="og:description"
@@ -61,6 +62,30 @@
             right: 0.75rem;
             top: 0.5rem;
         }
+
+
+        @media (min-width: 1200px) {
+
+            .container,
+            .container-lg,
+            .container-md,
+            .container-sm,
+            .container-xl {
+                max-width: 960px;
+            }
+        }
+
+        [data-ea-publisher] {
+            min-height: 256.52px;
+        }
+
+        [data-ea-publisher].loaded .ea-content,
+        [data-ea-type].loaded .ea-content {
+            margin: 0 !important;
+            box-shadow: none !important;
+            background: #eee !important;
+            border-radius: 0 !important;
+        }
     </style>
 </head>
 
@@ -81,14 +106,20 @@
                     <li>Works offline/installable</li>
                 </ul>
             </div>
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div id="app">Loading...</div>
+            <div class="row">
+                <div class="col-9">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div id="app">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <script async src="https://media.ethicalads.io/media/client/ethicalads.min.js"></script>
+                    <div class="float-right" data-ea-publisher="swimburger-net" data-ea-type="image"></div>
                 </div>
             </div>
-
         </div>
-
         <div id="blazor-error-ui">
             An unhandled error has occurred.
             <a href="" class="reload">Reload</a>
