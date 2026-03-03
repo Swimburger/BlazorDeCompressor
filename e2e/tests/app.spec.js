@@ -34,7 +34,7 @@ test('compress button is disabled with no files selected', async ({ page }) => {
 });
 
 test('compression level options are hidden in decompress mode', async ({ page }) => {
-  await page.locator('#radio-decompress').check();
+  await page.locator('label[for="radio-decompress"]').click();
   await expect(page.locator('#radio-optimal')).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Decompress Files' })).toBeDisabled();
 });
@@ -67,7 +67,7 @@ test('decompress a file end-to-end', async ({ page }) => {
   fs.writeFileSync(srcFile, 'Hello, GZIP decompressed!');
   execSync(`gzip -kf ${srcFile}`);
 
-  await page.locator('#radio-decompress').check();
+  await page.locator('label[for="radio-decompress"]').click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('input[type="file"]').setInputFiles(gzFile);

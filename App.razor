@@ -270,19 +270,16 @@
                 try
                 {
                     var browserFile = file.BrowserFile;
-                    var buffer = new byte[browserFile.Size];
-                    await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
-                    file.OriginalSize = buffer.Length;
-                    using (var outputStream = new MemoryStream())
+                    file.OriginalSize = browserFile.Size;
+                    using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                    using var outputStream = new MemoryStream();
+                    using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
                     {
-                        using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
-                        {
-                            await compressionStream.WriteAsync(buffer, 0, buffer.Length);
-                        }
-                        var outputBytes = outputStream.ToArray();
-                        file.OutputSize = outputBytes.Length;
-                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
+                        await inputStream.CopyToAsync(compressionStream);
                     }
+                    var outputBytes = outputStream.ToArray();
+                    file.OutputSize = outputBytes.Length;
+                    await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
 
                     file.Status = "Finished";
                 }
@@ -312,20 +309,16 @@
                 try
                 {
                     var browserFile = file.BrowserFile;
-                    var buffer = new byte[browserFile.Size];
-                    await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
-                    file.OriginalSize = buffer.Length;
-                    using (var inputStream = new MemoryStream(buffer))
-                    using (var outputStream = new MemoryStream())
+                    file.OriginalSize = browserFile.Size;
+                    using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                    using var outputStream = new MemoryStream();
+                    using (var decompressionStream = CreateDecompressStream(inputStream))
                     {
-                        using (var compressionStream = CreateDecompressStream(inputStream))
-                        {
-                            await compressionStream.CopyToAsync(outputStream);
-                        }
-                        var outputBytes = outputStream.ToArray();
-                        file.OutputSize = outputBytes.Length;
-                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
+                        await decompressionStream.CopyToAsync(outputStream);
                     }
+                    var outputBytes = outputStream.ToArray();
+                    file.OutputSize = outputBytes.Length;
+                    await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
 
                     file.Status = "Finished";
                 }
