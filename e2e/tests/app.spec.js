@@ -105,5 +105,19 @@ for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
     test(`intro paragraph mentions ${format}`, async ({ page }) => {
       await expect(page.locator('#intro-paragraph')).toContainText(new RegExp(displayName, 'i'));
     });
+
+    test(`favicons point to ${format} assets`, async ({ page }) => {
+      const icon32 = await page.locator('link[rel="icon"][sizes="32x32"]').getAttribute('href');
+      const icon16 = await page.locator('link[rel="icon"][sizes="16x16"]').getAttribute('href');
+      const touch  = await page.locator('link[rel="apple-touch-icon"][sizes="180x180"]').getAttribute('href');
+      expect(icon32).toContain(`/assets/${format}/`);
+      expect(icon16).toContain(`/assets/${format}/`);
+      expect(touch).toContain(`/assets/${format}/`);
+    });
+
+    test(`manifest points to ${format} manifest`, async ({ page }) => {
+      const manifest = await page.locator('link[rel="manifest"]').getAttribute('href');
+      expect(manifest).toBe(`manifest-${format}.json`);
+    });
   });
 }
