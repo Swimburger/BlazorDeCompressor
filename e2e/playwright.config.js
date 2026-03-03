@@ -8,10 +8,10 @@ module.exports = defineConfig({
     ignoreHTTPSErrors: true,
   },
   webServer: {
-    command: 'dotnet run --project .. --urls https://localhost:5001',
+    command: 'dotnet run --no-build --project .. --urls https://localhost:5001',
     url: 'https://localhost:5001',
-    timeout: 60000,
-    reuseExistingServer: !process.env.CI,
+    timeout: 10000,
+    reuseExistingServer: false,
     ignoreHTTPSErrors: true,
   },
 });
