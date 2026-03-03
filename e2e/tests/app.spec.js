@@ -51,8 +51,9 @@ test('compress a file end-to-end', async ({ page }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('test-input.txt.gz');
 
-  // Verify the status shows Finished
   await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('.list-group-item .text-muted')).toBeVisible();
+  await expect(page.locator('.list-group-item .badge').filter({ hasText: /smaller|larger/ })).toBeVisible();
 
   fs.unlinkSync(tmpFile);
 });
@@ -76,6 +77,7 @@ test('decompress a file end-to-end', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('test-decompress.txt');
 
   await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('.list-group-item .text-muted')).toBeVisible();
 
   fs.unlinkSync(srcFile);
   fs.unlinkSync(gzFile);
@@ -85,7 +87,9 @@ test('decompress a file end-to-end', async ({ page }) => {
 // which reads window.compressionFormat. We spoof it here via addInitScript.
 // Blazor component behaviour (labels, file extension) uses NavigationManager and requires
 // a real hostname match, so those paths are covered by manual / deployment testing.
-for (const format of ['brotli', 'deflate', 'zlib']) {
+const formatDisplayNames = { zstd: 'Zstandard' };
+for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
+  const displayName = formatDisplayNames[format] || format;
   test.describe(`${format} mode`, () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript((f) => { window.compressionFormat = f; }, format);
@@ -94,12 +98,12 @@ for (const format of ['brotli', 'deflate', 'zlib']) {
     });
 
     test(`page title and heading reflect ${format}`, async ({ page }) => {
-      await expect(page).toHaveTitle(new RegExp(format, 'i'));
-      await expect(page.getByRole('heading', { name: new RegExp(`Online ${format} de/compressor`, 'i') })).toBeVisible();
+      await expect(page).toHaveTitle(new RegExp(displayName, 'i'));
+      await expect(page.getByRole('heading', { name: new RegExp(`Online ${displayName} de/compressor`, 'i') })).toBeVisible();
     });
 
     test(`intro paragraph mentions ${format}`, async ({ page }) => {
-      await expect(page.locator('#intro-paragraph')).toContainText(new RegExp(format, 'i'));
+      await expect(page.locator('#intro-paragraph')).toContainText(new RegExp(displayName, 'i'));
     });
   });
 }

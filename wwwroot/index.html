@@ -63,6 +63,30 @@
             top: 0.5rem;
         }
 
+        .drop-zone {
+            position: relative;
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .drop-zone--active {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .drop-zone-input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
 
         @media (min-width: 1200px) {
 
@@ -144,7 +168,7 @@
     <script>
     (function () {
       const hostname = window.location.hostname;
-      const formats = ['brotli', 'deflate', 'zlib'];
+      const formats = ['brotli', 'deflate', 'zlib', 'zstd'];
       const detected = formats.find(f => hostname.includes(f)) || 'gzip';
       if (!window.compressionFormat) window.compressionFormat = detected;
       const format = window.compressionFormat;
@@ -169,6 +193,12 @@
           desc:    'Use this online ZLib tool to compress and decompress files right in the browser',
           heading: 'Online ZLib de/compressor',
           para:    'This tool can compress and decompress files using the ZLib algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+        },
+        zstd: {
+          title:   'Zstandard decompress/compress files from your browser',
+          desc:    'Use this online Zstandard tool to compress and decompress files right in the browser',
+          heading: 'Online Zstandard de/compressor',
+          para:    'This tool can compress and decompress files using the Zstandard algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
         }
       };
 
