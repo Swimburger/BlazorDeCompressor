@@ -80,3 +80,24 @@ test('decompress a file end-to-end', async ({ page }) => {
   fs.unlinkSync(srcFile);
   fs.unlinkSync(gzFile);
 });
+
+// Brotli static content (heading, title, meta) is driven by the inline JS in index.html,
+// which reads window.compressionFormat. We spoof it here via addInitScript.
+// Blazor component behaviour (labels, file extension) uses NavigationManager and requires
+// a real "brotli.*" hostname, so those paths are covered by manual / deployment testing.
+test.describe('brotli mode', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { window.compressionFormat = 'brotli'; });
+    await page.goto('/');
+    await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+  });
+
+  test('page title and heading reflect brotli', async ({ page }) => {
+    await expect(page).toHaveTitle(/Brotli/i);
+    await expect(page.getByRole('heading', { name: /Online Brotli de\/compressor/i })).toBeVisible();
+  });
+
+  test('intro paragraph mentions brotli', async ({ page }) => {
+    await expect(page.locator('#intro-paragraph')).toContainText(/Brotli/i);
+  });
+});

@@ -1,6 +1,7 @@
 @using System.IO
 @using System.IO.Compression
 @inject BlazorDownloadFile.IBlazorDownloadFileService BlazorDownloadFileService
+@inject NavigationManager NavManager
 
 <div class="mb-3">
     <div class="form-check form-check-inline">
@@ -52,11 +53,11 @@
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <label class="form-label">Choose files to compress to gzip</label>
+        <label class="form-label">Choose files to compress to @(_format == CompressionFormat.Brotli ? "brotli" : "gzip")</label>
     }
     else
     {
-        <label class="form-label">Choose gzip files to decompress</label>
+        <label class="form-label">Choose @(_format == CompressionFormat.Brotli ? "brotli" : "gzip") files to decompress</label>
     }
     <InputFile OnChange="OnFilesChange" multiple class="form-control" />
 </div>
@@ -102,10 +103,31 @@
 </ul>
 
 @code {
+    private enum CompressionFormat { GZip, Brotli }
+
     private CompressionMode compressionMode = CompressionMode.Compress;
     private CompressionLevel compressionLevel = CompressionLevel.Optimal;
     private List<Models.File> files = new List<Models.File>();
     private bool anyFiles => files.Any();
+
+    private CompressionFormat _format = CompressionFormat.GZip;
+    private string Extension => _format == CompressionFormat.Brotli ? ".br" : ".gz";
+
+    protected override void OnInitialized()
+    {
+        if (new Uri(NavManager.Uri).Host.Contains("brotli"))
+            _format = CompressionFormat.Brotli;
+    }
+
+    private Stream CreateCompressStream(Stream output, CompressionLevel level) =>
+        _format == CompressionFormat.Brotli
+            ? new BrotliStream(output, level)
+            : new GZipStream(output, level);
+
+    private Stream CreateDecompressStream(Stream input) =>
+        _format == CompressionFormat.Brotli
+            ? new BrotliStream(input, CompressionMode.Decompress)
+            : new GZipStream(input, CompressionMode.Decompress);
 
     private void OnFilesChange(InputFileChangeEventArgs e)
     {
@@ -126,7 +148,7 @@
             var task = Task.Run(async () =>
             {
                 file.Status = "Compressing";
-                file.NewName = $"{file.OriginalName}.gz";
+                file.NewName = $"{file.OriginalName}{Extension}";
                 StateHasChanged();
 
                 try
@@ -136,7 +158,7 @@
                     await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
                     using (var outputStream = new MemoryStream())
                     {
-                        using (var compressionStream = new GZipStream(outputStream, compressionLevel))
+                        using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
                         {
                             await compressionStream.WriteAsync(buffer, 0, buffer.Length);
                         }
@@ -165,7 +187,7 @@
             var task = Task.Run(async () =>
             {
                 file.Status = "Decompressing";
-                file.NewName = file.OriginalName.Replace(".gz", "");
+                file.NewName = file.OriginalName.Replace(Extension, "");
                 StateHasChanged();
 
                 try
@@ -176,7 +198,7 @@
                     using (var inputStream = new MemoryStream(buffer))
                     using (var outputStream = new MemoryStream())
                     {
-                        using (var compressionStream = new GZipStream(inputStream, CompressionMode.Decompress))
+                        using (var compressionStream = CreateDecompressStream(inputStream))
                         {
                             await compressionStream.CopyToAsync(outputStream);
                         }
