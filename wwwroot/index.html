@@ -239,6 +239,14 @@
       set('meta[name="twitter:description"]','content', l.desc);
       set('h1',              'textContent', l.heading);
       set('#intro-paragraph','textContent', l.para);
+
+      const base = `/assets/${format}/`;
+      const setHref = (sel, href) => { const el = document.querySelector(sel); if (el) el.href = href; };
+      setHref('link[rel="apple-touch-icon"][sizes="180x180"]', base + 'apple-touch-icon.png');
+      setHref('link[rel="apple-touch-icon"][sizes="512x512"]', base + '512x512.png');
+      setHref('link[rel="icon"][sizes="32x32"]',               base + 'favicon-32x32.png');
+      setHref('link[rel="icon"][sizes="16x16"]',               base + 'favicon-16x16.png');
+      setHref('link[rel="manifest"]',                          `manifest-${format}.json`);
     })();
     </script>
     <script src="_framework/blazor.webassembly.js"></script>
