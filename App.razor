@@ -50,16 +50,22 @@
 </div>
 }
 
-<div class="mb-3">
+<div class="drop-zone mb-3 @(_dragCount > 0 ? "drop-zone--active" : "")"
+     @ondragenter="@(() => _dragCount++)"
+     @ondragleave="@(() => _dragCount--)"
+     @ondrop="@(() => _dragCount = 0)"
+     @ondragover:preventDefault>
     @if (compressionMode == CompressionMode.Compress)
     {
-        <label class="form-label">Choose files to compress to @FormatName</label>
+        <p class="mb-1 fw-medium">Choose files to compress to @FormatName</p>
     }
     else
     {
-        <label class="form-label">Choose @FormatName files to decompress</label>
+        <p class="mb-1 fw-medium">Choose @FormatName files to decompress</p>
     }
-    <InputFile OnChange="OnFilesChange" multiple class="form-control" />
+    <p class="text-muted small mb-0">or drag and drop here</p>
+    <InputFile OnChange="OnFilesChange" multiple class="drop-zone-input"
+        accept="@(compressionMode == CompressionMode.Decompress ? Extension : "")" />
 </div>
 
 <div class="mb-3">
@@ -97,13 +103,18 @@
         @if(file.Status == "Finished")
         {
             <span class="text-success">✔ Finished</span>
+            <span class="text-muted ms-2 small">@FormatBytes(file.OriginalSize) → @FormatBytes(file.OutputSize)</span>
+            @if (compressionMode == CompressionMode.Compress)
+            {
+                <span class="@RatioBadgeCss(file.OriginalSize, file.OutputSize) ms-1">@RatioText(file.OriginalSize, file.OutputSize)</span>
+            }
         }
     </li>
 }
 </ul>
 
 @code {
-    private enum CompressionFormat { GZip, Brotli, Deflate, ZLib }
+    private enum CompressionFormat { GZip, Brotli, Deflate, ZLib, ZStd }
 
     private CompressionMode compressionMode = CompressionMode.Compress;
     private CompressionLevel compressionLevel = CompressionLevel.Optimal;
@@ -111,11 +122,13 @@
     private bool anyFiles => files.Any();
 
     private CompressionFormat _format = CompressionFormat.GZip;
+    private int _dragCount;
     private string FormatName => _format switch
     {
         CompressionFormat.Brotli  => "brotli",
         CompressionFormat.Deflate => "deflate",
         CompressionFormat.ZLib    => "zlib",
+        CompressionFormat.ZStd    => "zstd",
         _                         => "gzip"
     };
     private string Extension => _format switch
@@ -123,6 +136,7 @@
         CompressionFormat.Brotli  => ".br",
         CompressionFormat.Deflate => ".deflate",
         CompressionFormat.ZLib    => ".zlib",
+        CompressionFormat.ZStd    => ".zst",
         _                         => ".gz"
     };
 
@@ -134,25 +148,73 @@
             _ when host.Contains("brotli")  => CompressionFormat.Brotli,
             _ when host.Contains("deflate") => CompressionFormat.Deflate,
             _ when host.Contains("zlib")    => CompressionFormat.ZLib,
+            _ when host.Contains("zstd")    => CompressionFormat.ZStd,
             _                               => CompressionFormat.GZip
         };
     }
 
-    private Stream CreateCompressStream(Stream output, CompressionLevel level) => _format switch
+    private Stream CreateCompressStream(Stream output, CompressionLevel level)
     {
-        CompressionFormat.Brotli  => new BrotliStream(output, level),
-        CompressionFormat.Deflate => new DeflateStream(output, level),
-        CompressionFormat.ZLib    => new ZLibStream(output, level),
-        _                         => new GZipStream(output, level)
+        if (_format == CompressionFormat.Brotli)
+        {
+            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress);
+            s.SetQuality(ToBrotliQuality(level));
+            return s;
+        }
+        if (_format == CompressionFormat.ZStd)
+            return new ZstdSharp.CompressionStream(output, ToZstdLevel(level));
+        return _format switch
+        {
+            CompressionFormat.Deflate => new DeflateStream(output, level),
+            CompressionFormat.ZLib    => new ZLibStream(output, level),
+            _                         => new GZipStream(output, level)
+        };
+    }
+
+    private static int ToBrotliQuality(CompressionLevel level) => level switch
+    {
+        CompressionLevel.NoCompression => 0,
+        CompressionLevel.Fastest       => 1,
+        CompressionLevel.SmallestSize  => 11,
+        _                              => 6
+    };
+
+    private static int ToZstdLevel(CompressionLevel level) => level switch
+    {
+        CompressionLevel.NoCompression => 1,
+        CompressionLevel.Fastest       => 1,
+        CompressionLevel.SmallestSize  => 19,
+        _                              => 3
     };
 
     private Stream CreateDecompressStream(Stream input) => _format switch
     {
-        CompressionFormat.Brotli  => new BrotliStream(input, CompressionMode.Decompress),
+        CompressionFormat.Brotli  => new BrotliSharpLib.BrotliStream(input, CompressionMode.Decompress),
         CompressionFormat.Deflate => new DeflateStream(input, CompressionMode.Decompress),
         CompressionFormat.ZLib    => new ZLibStream(input, CompressionMode.Decompress),
+        CompressionFormat.ZStd    => new ZstdSharp.DecompressionStream(input),
         _                         => new GZipStream(input, CompressionMode.Decompress)
     };
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024):F1} MB";
+    }
+
+    private static string RatioText(long original, long output)
+    {
+        if (original == 0) return "";
+        var pct = (1.0 - (double)output / original) * 100;
+        return pct >= 0 ? $"{pct:F0}% smaller" : $"{-pct:F0}% larger";
+    }
+
+    private static string RatioBadgeCss(long original, long output)
+    {
+        var pct = original > 0 ? (1.0 - (double)output / original) * 100 : 0;
+        return pct >= 0 ? "badge bg-success" : "badge bg-warning text-dark";
+    }
 
     private void OnFilesChange(InputFileChangeEventArgs e)
     {
@@ -181,13 +243,16 @@
                     var browserFile = file.BrowserFile;
                     var buffer = new byte[browserFile.Size];
                     await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
+                    file.OriginalSize = buffer.Length;
                     using (var outputStream = new MemoryStream())
                     {
                         using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
                         {
                             await compressionStream.WriteAsync(buffer, 0, buffer.Length);
                         }
-                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputStream.ToArray(), "application/octet-stream");
+                        var outputBytes = outputStream.ToArray();
+                        file.OutputSize = outputBytes.Length;
+                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
                     }
 
                     file.Status = "Finished";
@@ -220,6 +285,7 @@
                     var browserFile = file.BrowserFile;
                     var buffer = new byte[browserFile.Size];
                     await browserFile.OpenReadStream(long.MaxValue).ReadAsync(buffer);
+                    file.OriginalSize = buffer.Length;
                     using (var inputStream = new MemoryStream(buffer))
                     using (var outputStream = new MemoryStream())
                     {
@@ -227,7 +293,9 @@
                         {
                             await compressionStream.CopyToAsync(outputStream);
                         }
-                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputStream.ToArray(), "application/octet-stream");
+                        var outputBytes = outputStream.ToArray();
+                        file.OutputSize = outputBytes.Length;
+                        await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
                     }
 
                     file.Status = "Finished";
