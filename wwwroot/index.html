@@ -17,18 +17,18 @@
     <meta name="twitter:site" content="@RealSwimburger" />
     <meta name="twitter:creator" content="@RealSwimburger" />
     <base href="/" />
-    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" />
     <link href="manifest.json" rel="manifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="512x512" href="/assets/512x512.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-40212618-4"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DTV3FZ5XWK"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
-        gtag('config', 'UA-40212618-4');
+        gtag('config', 'G-DTV3FZ5XWK');
     </script>
     <style>
         footer {
@@ -99,7 +99,7 @@
                 server.
             </p>
             <div class="alert alert-primary">
-                <ul style="font-size: 1.2rem;margin: 0;padding-left: 15px;" class="font-weight-bold">
+                <ul style="font-size: 1.2rem;margin: 0;padding-left: 15px;" class="fw-bold">
                     <li>Files are compress/decompressed on your device</li>
                     <li>No files are transmitted</li>
                     <li>Size limit depends on the limitations of your browser</li>
@@ -110,13 +110,19 @@
                 <div class="col-9">
                     <div class="card mb-3">
                         <div class="card-body">
-                            <div id="app">Loading...</div>
+                            <div id="app">
+                                <div class="d-flex justify-content-center align-items-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-3">
                     <script async src="https://media.ethicalads.io/media/client/ethicalads.min.js"></script>
-                    <div class="float-right" data-ea-publisher="swimburger-net" data-ea-type="image"></div>
+                    <div class="float-end" data-ea-publisher="swimburger-net" data-ea-type="image"></div>
                 </div>
             </div>
         </div>
