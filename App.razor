@@ -3,54 +3,59 @@
 @inject BlazorDownloadFile.IBlazorDownloadFileService BlazorDownloadFileService
 @inject NavigationManager NavManager
 
-<div class="mb-3">
-    <div class="form-check form-check-inline">
-        <input id="radio-compress" class="form-check-input" type="radio"
-            checked="@(compressionMode == CompressionMode.Compress)"
-            @onchange="@(() => compressionMode = CompressionMode.Compress)">
-        <label class="form-check-label" for="radio-compress">Compress</label>
-    </div>
-    <div class="form-check form-check-inline">
-        <input id="radio-decompress" class="form-check-input" type="radio"
-            checked="@(compressionMode == CompressionMode.Decompress)"
-            @onchange="@(() => compressionMode = CompressionMode.Decompress)">
-        <label class="form-check-label" for="radio-decompress">Decompress</label>
-    </div>
+<ul class="nav nav-pills mb-4 pb-1 border-bottom" role="navigation" aria-label="Compression format">
+    @foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
+    {
+        <li class="nav-item">
+            @if (fmt == _format)
+            {
+                <span class="nav-link active" aria-current="page">@FormatDisplayName(fmt)</span>
+            }
+            else
+            {
+                <a class="nav-link" href="@FormatUrl(fmt)">@FormatDisplayName(fmt)</a>
+            }
+        </li>
+    }
+</ul>
+
+<div class="btn-group mb-4" role="group" aria-label="Mode">
+    <input id="radio-compress" class="btn-check" type="radio" autocomplete="off"
+        checked="@(compressionMode == CompressionMode.Compress)"
+        @onchange="@(() => compressionMode = CompressionMode.Compress)">
+    <label class="btn btn-outline-primary px-4" for="radio-compress">Compress</label>
+    <input id="radio-decompress" class="btn-check" type="radio" autocomplete="off"
+        checked="@(compressionMode == CompressionMode.Decompress)"
+        @onchange="@(() => compressionMode = CompressionMode.Decompress)">
+    <label class="btn btn-outline-primary px-4" for="radio-decompress">Decompress</label>
 </div>
+
 @if (compressionMode == CompressionMode.Compress)
 {
 <div class="mb-3">
-    <label class="form-label">Compression Level:</label>
-    <div>
-        <div class="form-check form-check-inline">
-            <input id="radio-smallest" class="form-check-input" type="radio"
-                checked="@(compressionLevel == CompressionLevel.SmallestSize)"
-                @onchange="@(() => compressionLevel = CompressionLevel.SmallestSize)">
-            <label class="form-check-label" for="radio-smallest">Smallest Size</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input id="radio-optimal" class="form-check-input" type="radio"
-                checked="@(compressionLevel == CompressionLevel.Optimal)"
-                @onchange="@(() => compressionLevel = CompressionLevel.Optimal)">
-            <label class="form-check-label" for="radio-optimal">Optimal</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input id="radio-fastest" class="form-check-input" type="radio"
-                checked="@(compressionLevel == CompressionLevel.Fastest)"
-                @onchange="@(() => compressionLevel = CompressionLevel.Fastest)">
-            <label class="form-check-label" for="radio-fastest">Fastest</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input id="radio-no-compression" class="form-check-input" type="radio"
-                checked="@(compressionLevel == CompressionLevel.NoCompression)"
-                @onchange="@(() => compressionLevel = CompressionLevel.NoCompression)">
-            <label class="form-check-label" for="radio-no-compression">No Compression</label>
-        </div>
+    <label class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</label>
+    <div class="btn-group d-flex btn-group-sm" role="group" aria-label="Compression level">
+        <input id="radio-smallest" class="btn-check" type="radio" autocomplete="off"
+            checked="@(compressionLevel == CompressionLevel.SmallestSize)"
+            @onchange="@(() => compressionLevel = CompressionLevel.SmallestSize)">
+        <label class="btn btn-outline-secondary w-100" for="radio-smallest">Smallest Size</label>
+        <input id="radio-optimal" class="btn-check" type="radio" autocomplete="off"
+            checked="@(compressionLevel == CompressionLevel.Optimal)"
+            @onchange="@(() => compressionLevel = CompressionLevel.Optimal)">
+        <label class="btn btn-outline-secondary w-100" for="radio-optimal">Optimal</label>
+        <input id="radio-fastest" class="btn-check" type="radio" autocomplete="off"
+            checked="@(compressionLevel == CompressionLevel.Fastest)"
+            @onchange="@(() => compressionLevel = CompressionLevel.Fastest)">
+        <label class="btn btn-outline-secondary w-100" for="radio-fastest">Fastest</label>
+        <input id="radio-no-compression" class="btn-check" type="radio" autocomplete="off"
+            checked="@(compressionLevel == CompressionLevel.NoCompression)"
+            @onchange="@(() => compressionLevel = CompressionLevel.NoCompression)">
+        <label class="btn btn-outline-secondary w-100" for="radio-no-compression">No Compression</label>
     </div>
 </div>
 }
 
-<div class="drop-zone mb-3 @(_dragCount > 0 ? "drop-zone--active" : "")"
+<div class="drop-zone mb-4 @(_dragCount > 0 ? "drop-zone--active" : "")"
      @ondragenter="@(() => _dragCount++)"
      @ondragleave="@(() => _dragCount--)"
      @ondrop="@(() => _dragCount = 0)"
@@ -71,39 +76,37 @@
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <button role="button" class="btn btn-primary" @onclick="CompressFiles" disabled="@(!anyFiles)">Compress Files</button>
+        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles)">Compress Files</button>
     }
     else
     {
-        <button role="button" class="btn btn-primary" @onclick="DecompressFiles" disabled="@(!anyFiles)">Decompress Files</button>
+        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles)">Decompress Files</button>
     }
-    &nbsp;
     @if(!anyFiles){
-        <span class="text-danger">No files selected</span>
+        <div class="text-danger small text-center mt-1">No files selected</div>
     }
 </div>
 
 <ul class="list-group">
 @foreach (var file in files)
 {
-    <li class="list-group-item">
-        @file.OriginalName
+    <li class="list-group-item d-flex align-items-center gap-2 py-2">
+        <span class="text-truncate flex-grow-1 small fw-medium">@file.OriginalName</span>
         @if(file.Status == "Compressing" || file.Status == "Decompressing")
         {
-            <div class="spinner-grow text-primary spinner-grow-sm" role="status">
+            <div class="spinner-grow text-primary spinner-grow-sm flex-shrink-0" role="status">
                 <span class="visually-hidden">@file.Status</span>
             </div>
+            <small class="text-muted text-nowrap">@file.Status…</small>
         }
-        &nbsp;
         @if(file.Status.StartsWith("Error"))
         {
-            <br />
-            <span class="text-danger">⚠ @file.Status</span>
+            <small class="text-danger text-nowrap">⚠ @file.Status</small>
         }
         @if(file.Status == "Finished")
         {
-            <span class="text-success">✔ Finished</span>
-            <span class="text-muted ms-2 small">@FormatBytes(file.OriginalSize) → @FormatBytes(file.OutputSize)</span>
+            <span class="text-success flex-shrink-0">✔ Finished</span>
+            <span class="text-muted small text-nowrap">@FormatBytes(file.OriginalSize) → @FormatBytes(file.OutputSize)</span>
             @if (compressionMode == CompressionMode.Compress)
             {
                 <span class="@RatioBadgeCss(file.OriginalSize, file.OutputSize) ms-1">@RatioText(file.OriginalSize, file.OutputSize)</span>
@@ -123,7 +126,8 @@
 
     private CompressionFormat _format = CompressionFormat.GZip;
     private int _dragCount;
-    private string FormatName => _format switch
+
+    private static string FormatSlug(CompressionFormat fmt) => fmt switch
     {
         CompressionFormat.Brotli  => "brotli",
         CompressionFormat.Deflate => "deflate",
@@ -131,6 +135,31 @@
         CompressionFormat.ZStd    => "zstd",
         _                         => "gzip"
     };
+
+    private static string FormatDisplayName(CompressionFormat fmt) => fmt switch
+    {
+        CompressionFormat.Brotli  => "Brotli",
+        CompressionFormat.Deflate => "Deflate",
+        CompressionFormat.ZLib    => "ZLib",
+        CompressionFormat.ZStd    => "Zstandard",
+        _                         => "GZIP"
+    };
+
+    private string FormatUrl(CompressionFormat fmt)
+    {
+        var uri = new Uri(NavManager.Uri);
+        var host = uri.Host;
+        var currentSlug = FormatName;
+        if (host.Contains(currentSlug))
+        {
+            var newHost = host.Replace(currentSlug, FormatSlug(fmt));
+            var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
+            return $"{uri.Scheme}://{newHost}{port}";
+        }
+        return "#";
+    }
+
+    private string FormatName => FormatSlug(_format);
     private string Extension => _format switch
     {
         CompressionFormat.Brotli  => ".br",
