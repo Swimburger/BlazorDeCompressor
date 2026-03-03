@@ -35,9 +35,6 @@ jobs:
         working-directory: e2e
         run: npm ci
 
-      - name: Trust .NET dev certificate
-        run: dotnet dev-certs https --trust
-
       - name: Install Playwright browsers
         working-directory: e2e
         run: npx playwright install --with-deps chromium
