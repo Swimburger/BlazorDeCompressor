@@ -83,6 +83,101 @@ test('decompress a file end-to-end', async ({ page }) => {
   fs.unlinkSync(gzFile);
 });
 
+// Round-trip correctness tests — one per format.
+// Each test compresses a file, decompresses the output, and asserts the content is identical.
+// Non-gzip formats navigate to *.localhost:5001, which resolves to 127.0.0.1 on macOS and
+// modern Linux (systemd-resolved) automatically — no /etc/hosts entries required.
+const roundTripFormats = [
+  { name: 'gzip',    ext: '.gz',      url: 'https://localhost:5001' },
+  { name: 'brotli',  ext: '.br',      url: 'https://brotli.localhost:5001' },
+  { name: 'deflate', ext: '.deflate', url: 'https://deflate.localhost:5001' },
+  { name: 'zlib',    ext: '.zlib',    url: 'https://zlib.localhost:5001' },
+  { name: 'zstd',    ext: '.zst',     url: 'https://zstd.localhost:5001' },
+];
+
+for (const fmt of roundTripFormats) {
+  test(`${fmt.name} round-trip: compress then decompress preserves content`, async ({ page }) => {
+    const content = `Hello from the ${fmt.name} round-trip test!`;
+    const inputFile     = path.join(os.tmpdir(), `roundtrip-${fmt.name}-in.txt`);
+    const compressedFile = path.join(os.tmpdir(), `roundtrip-${fmt.name}-in.txt${fmt.ext}`);
+    fs.writeFileSync(inputFile, content);
+
+    try {
+      await page.goto(fmt.url);
+      await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+
+      // Compress
+      const compressDownloadPromise = page.waitForEvent('download');
+      await page.locator('input[type="file"]').setInputFiles(inputFile);
+      await page.getByRole('button', { name: 'Compress Files' }).click();
+      const compressedDownload = await compressDownloadPromise;
+      expect(compressedDownload.suggestedFilename()).toBe(`roundtrip-${fmt.name}-in.txt${fmt.ext}`);
+      await compressedDownload.saveAs(compressedFile);
+      await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+
+      // Switch to decompress mode
+      await page.locator('label[for="radio-decompress"]').click();
+
+      // Decompress
+      const decompressDownloadPromise = page.waitForEvent('download');
+      await page.locator('input[type="file"]').setInputFiles(compressedFile);
+      await page.getByRole('button', { name: 'Decompress Files' }).click();
+      const decompressedDownload = await decompressDownloadPromise;
+      expect(decompressedDownload.suggestedFilename()).toBe(`roundtrip-${fmt.name}-in.txt`);
+      const decompressedPath = await decompressedDownload.path();
+      expect(fs.readFileSync(decompressedPath, 'utf-8')).toBe(content);
+    } finally {
+      if (fs.existsSync(inputFile))      fs.unlinkSync(inputFile);
+      if (fs.existsSync(compressedFile)) fs.unlinkSync(compressedFile);
+    }
+  });
+}
+
+test('SmallestSize compression produces output <= Fastest, and round-trips correctly', async ({ page }) => {
+  const content = 'A'.repeat(100000);
+  const inputFile = path.join(os.tmpdir(), 'level-test-input.txt');
+  fs.writeFileSync(inputFile, content);
+
+  const smallestFile = path.join(os.tmpdir(), 'level-test-input.txt.gz');
+
+  try {
+    // Compress at SmallestSize
+    await page.locator('label[for="radio-smallest"]').click();
+    let downloadPromise = page.waitForEvent('download');
+    await page.locator('input[type="file"]').setInputFiles(inputFile);
+    await page.getByRole('button', { name: 'Compress Files' }).click();
+    const smallestDownload = await downloadPromise;
+    await smallestDownload.saveAs(smallestFile);
+    await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+    const smallestSize = fs.statSync(smallestFile).size;
+
+    // Compress at Fastest (re-select file to reset list)
+    await page.locator('label[for="radio-fastest"]').click();
+    downloadPromise = page.waitForEvent('download');
+    await page.locator('input[type="file"]').setInputFiles(inputFile);
+    await page.getByRole('button', { name: 'Compress Files' }).click();
+    const fastestDownload = await downloadPromise;
+    const fastestPath = await fastestDownload.path();
+    await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+    const fastestSize = fs.statSync(fastestPath).size;
+
+    expect(smallestSize).toBeLessThanOrEqual(fastestSize);
+
+    // Decompress the SmallestSize output and verify round-trip
+    await page.locator('label[for="radio-decompress"]').click();
+    downloadPromise = page.waitForEvent('download');
+    await page.locator('input[type="file"]').setInputFiles(smallestFile);
+    await page.getByRole('button', { name: 'Decompress Files' }).click();
+    const decompressedDownload = await downloadPromise;
+    const decompressedPath = await decompressedDownload.path();
+    await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
+    expect(fs.readFileSync(decompressedPath, 'utf-8')).toBe(content);
+  } finally {
+    if (fs.existsSync(inputFile))   fs.unlinkSync(inputFile);
+    if (fs.existsSync(smallestFile)) fs.unlinkSync(smallestFile);
+  }
+});
+
 // Static content (heading, title, meta, paragraph) is driven by the inline JS in index.html,
 // which reads window.compressionFormat. We spoof it here via addInitScript.
 // Blazor component behaviour (labels, file extension) uses NavigationManager and requires

@@ -1,6 +1,6 @@
 @using System.IO
 @using System.IO.Compression
-@inject BlazorDownloadFile.IBlazorDownloadFileService BlazorDownloadFileService
+@inject IJSRuntime JS
 @inject NavigationManager NavManager
 
 <ul class="nav nav-pills mb-4 pb-1 border-bottom" role="navigation" aria-label="Compression format">
@@ -92,6 +92,10 @@
 {
     <li class="list-group-item d-flex align-items-center gap-2 py-2">
         <span class="text-truncate flex-grow-1 small fw-medium">@file.OriginalName</span>
+        @if (file.Status == "To Process" && file.OriginalSize > WarnFileSizeBytes)
+        {
+            <small class="text-warning text-nowrap">⚠ >250 MB</small>
+        }
         @if(file.Status == "Compressing" || file.Status == "Decompressing")
         {
             <div class="spinner-grow text-primary spinner-grow-sm flex-shrink-0" role="status">
@@ -126,6 +130,8 @@
 
     private CompressionFormat _format = CompressionFormat.GZip;
     private int _dragCount;
+    private const long WarnFileSizeBytes = 250L * 1024 * 1024;
+    private static readonly SemaphoreSlim _semaphore = new(4, 4);
 
     private static string FormatSlug(CompressionFormat fmt) => fmt switch
     {
@@ -186,7 +192,7 @@
     {
         if (_format == CompressionFormat.Brotli)
         {
-            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress);
+            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress, true);
             s.SetQuality(ToBrotliQuality(level));
             return s;
         }
@@ -194,9 +200,9 @@
             return new ZstdSharp.CompressionStream(output, ToZstdLevel(level));
         return _format switch
         {
-            CompressionFormat.Deflate => new DeflateStream(output, level),
-            CompressionFormat.ZLib    => new ZLibStream(output, level),
-            _                         => new GZipStream(output, level)
+            CompressionFormat.Deflate => new DeflateStream(output, level, leaveOpen: true),
+            CompressionFormat.ZLib    => new ZLibStream(output, level, leaveOpen: true),
+            _                         => new GZipStream(output, level, leaveOpen: true)
         };
     }
 
@@ -252,6 +258,7 @@
         {
             BrowserFile = f,
             OriginalName = f.Name,
+            OriginalSize = f.Size,
             Status = "To Process"
         }));
     }
@@ -263,31 +270,36 @@
         {
             var task = Task.Run(async () =>
             {
-                file.Status = "Compressing";
-                file.NewName = $"{file.OriginalName}{Extension}";
-                StateHasChanged();
-
+                await _semaphore.WaitAsync();
                 try
                 {
-                    var browserFile = file.BrowserFile;
-                    file.OriginalSize = browserFile.Size;
-                    using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                    using var outputStream = new MemoryStream();
-                    using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
+                    file.Status = "Compressing";
+                    file.NewName = $"{file.OriginalName}{Extension}";
+                    StateHasChanged();
+
+                    try
                     {
-                        await inputStream.CopyToAsync(compressionStream);
+                        var browserFile = file.BrowserFile;
+                        using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                        using var outputStream = new MemoryStream();
+                        using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
+                        {
+                            await inputStream.CopyToAsync(compressionStream);
+                        }
+                        file.OutputSize = outputStream.Length;
+                        outputStream.Position = 0;
+                        using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                        await JS.InvokeVoidAsync("downloadFileFromStream", file.NewName, streamRef);
+
+                        file.Status = "Finished";
                     }
-                    var outputBytes = outputStream.ToArray();
-                    file.OutputSize = outputBytes.Length;
-                    await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
+                    catch(Exception ex){
+                        file.Status = $"Error: {ex.Message}";
+                    }
 
-                    file.Status = "Finished";
+                    StateHasChanged();
                 }
-                catch(Exception ex){
-                    file.Status = $"Error: {ex.Message}";
-                }
-
-                StateHasChanged();
+                finally { _semaphore.Release(); }
             });
             tasks.Add(task);
         }
@@ -302,30 +314,50 @@
         {
             var task = Task.Run(async () =>
             {
-                file.Status = "Decompressing";
-                file.NewName = file.OriginalName.Replace(Extension, "");
-                StateHasChanged();
-
+                await _semaphore.WaitAsync();
                 try
                 {
-                    var browserFile = file.BrowserFile;
-                    file.OriginalSize = browserFile.Size;
-                    using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                    using var outputStream = new MemoryStream();
-                    using (var decompressionStream = CreateDecompressStream(inputStream))
-                    {
-                        await decompressionStream.CopyToAsync(outputStream);
-                    }
-                    var outputBytes = outputStream.ToArray();
-                    file.OutputSize = outputBytes.Length;
-                    await BlazorDownloadFileService.DownloadFile(file.NewName, outputBytes, "application/octet-stream");
+                    file.Status = "Decompressing";
+                    file.NewName = file.OriginalName.Replace(Extension, "");
+                    StateHasChanged();
 
-                    file.Status = "Finished";
+                    try
+                    {
+                        var browserFile = file.BrowserFile;
+                        using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                        using var outputStream = new MemoryStream();
+                        // BrotliSharpLib.BrotliStream.ReadAsync calls synchronous Read internally, which
+                        // fails on IBrowserFile streams (async-only). Pre-buffer the compressed input into
+                        // a MemoryStream first. This adds a copy of the compressed data in memory, but
+                        // compressed files are typically small relative to their decompressed output.
+                        if (_format == CompressionFormat.Brotli)
+                        {
+                            using var bufferedInput = new MemoryStream();
+                            await inputStream.CopyToAsync(bufferedInput);
+                            bufferedInput.Position = 0;
+                            using var s = CreateDecompressStream(bufferedInput);
+                            s.CopyTo(outputStream);
+                        }
+                        else
+                        {
+                            using (var decompressionStream = CreateDecompressStream(inputStream))
+                            {
+                                await decompressionStream.CopyToAsync(outputStream);
+                            }
+                        }
+                        file.OutputSize = outputStream.Length;
+                        outputStream.Position = 0;
+                        using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                        await JS.InvokeVoidAsync("downloadFileFromStream", file.NewName, streamRef);
+
+                        file.Status = "Finished";
+                    }
+                    catch(Exception ex){
+                        file.Status = $"Error: {ex.Message}";
+                    }
+                    StateHasChanged();
                 }
-                catch(Exception ex){
-                    file.Status = $"Error: {ex.Message}";
-                }
-                StateHasChanged();
+                finally { _semaphore.Release(); }
             });
             tasks.Add(task);
         }
