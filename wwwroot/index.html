@@ -143,22 +143,45 @@
     </footer>
     <script>
     (function () {
-      const isBrotli = window.compressionFormat === 'brotli' || window.location.hostname.includes('brotli');
-      if (!window.compressionFormat) window.compressionFormat = isBrotli ? 'brotli' : 'gzip';
-      if (!isBrotli) return;
+      const hostname = window.location.hostname;
+      const formats = ['brotli', 'deflate', 'zlib'];
+      const detected = formats.find(f => hostname.includes(f)) || 'gzip';
+      if (!window.compressionFormat) window.compressionFormat = detected;
+      const format = window.compressionFormat;
+      if (format === 'gzip') return;
 
       const set = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el[attr] = val; };
-      const title = 'Brotli decompress/compress files from your browser';
-      const desc  = 'Use this online Brotli tool to compress and decompress files right in the browser';
+      const labels = {
+        brotli:  {
+          title:   'Brotli decompress/compress files from your browser',
+          desc:    'Use this online Brotli tool to compress and decompress files right in the browser',
+          heading: 'Online Brotli de/compressor',
+          para:    'This tool can compress and decompress files using the Brotli algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+        },
+        deflate: {
+          title:   'Deflate decompress/compress files from your browser',
+          desc:    'Use this online Deflate tool to compress and decompress files right in the browser',
+          heading: 'Online Deflate de/compressor',
+          para:    'This tool can compress and decompress files using the Deflate algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+        },
+        zlib: {
+          title:   'ZLib decompress/compress files from your browser',
+          desc:    'Use this online ZLib tool to compress and decompress files right in the browser',
+          heading: 'Online ZLib de/compressor',
+          para:    'This tool can compress and decompress files using the ZLib algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+        }
+      };
 
-      document.title = title;
-      set('meta[name="description"]',        'content', desc);
-      set('meta[property="og:title"]',       'content', title);
-      set('meta[property="og:description"]', 'content', desc);
-      set('meta[name="twitter:title"]',      'content', title);
-      set('meta[name="twitter:description"]','content', desc);
-      set('h1.display-4',   'textContent', 'Online Brotli de/compressor');
-      set('#intro-paragraph','textContent', 'This tool can compress and decompress files using the Brotli algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.');
+      const l = labels[format];
+      if (!l) return;
+      document.title = l.title;
+      set('meta[name="description"]',        'content', l.desc);
+      set('meta[property="og:title"]',       'content', l.title);
+      set('meta[property="og:description"]', 'content', l.desc);
+      set('meta[name="twitter:title"]',      'content', l.title);
+      set('meta[name="twitter:description"]','content', l.desc);
+      set('h1.display-4',    'textContent', l.heading);
+      set('#intro-paragraph','textContent', l.para);
     })();
     </script>
     <script src="_framework/blazor.webassembly.js"></script>

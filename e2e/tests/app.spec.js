@@ -81,23 +81,25 @@ test('decompress a file end-to-end', async ({ page }) => {
   fs.unlinkSync(gzFile);
 });
 
-// Brotli static content (heading, title, meta) is driven by the inline JS in index.html,
+// Static content (heading, title, meta, paragraph) is driven by the inline JS in index.html,
 // which reads window.compressionFormat. We spoof it here via addInitScript.
 // Blazor component behaviour (labels, file extension) uses NavigationManager and requires
-// a real "brotli.*" hostname, so those paths are covered by manual / deployment testing.
-test.describe('brotli mode', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => { window.compressionFormat = 'brotli'; });
-    await page.goto('/');
-    await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
-  });
+// a real hostname match, so those paths are covered by manual / deployment testing.
+for (const format of ['brotli', 'deflate', 'zlib']) {
+  test.describe(`${format} mode`, () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript((f) => { window.compressionFormat = f; }, format);
+      await page.goto('/');
+      await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+    });
 
-  test('page title and heading reflect brotli', async ({ page }) => {
-    await expect(page).toHaveTitle(/Brotli/i);
-    await expect(page.getByRole('heading', { name: /Online Brotli de\/compressor/i })).toBeVisible();
-  });
+    test(`page title and heading reflect ${format}`, async ({ page }) => {
+      await expect(page).toHaveTitle(new RegExp(format, 'i'));
+      await expect(page.getByRole('heading', { name: new RegExp(`Online ${format} de/compressor`, 'i') })).toBeVisible();
+    });
 
-  test('intro paragraph mentions brotli', async ({ page }) => {
-    await expect(page.locator('#intro-paragraph')).toContainText(/Brotli/i);
+    test(`intro paragraph mentions ${format}`, async ({ page }) => {
+      await expect(page.locator('#intro-paragraph')).toContainText(new RegExp(format, 'i'));
+    });
   });
-});
+}

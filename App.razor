@@ -53,11 +53,11 @@
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <label class="form-label">Choose files to compress to @(_format == CompressionFormat.Brotli ? "brotli" : "gzip")</label>
+        <label class="form-label">Choose files to compress to @FormatName</label>
     }
     else
     {
-        <label class="form-label">Choose @(_format == CompressionFormat.Brotli ? "brotli" : "gzip") files to decompress</label>
+        <label class="form-label">Choose @FormatName files to decompress</label>
     }
     <InputFile OnChange="OnFilesChange" multiple class="form-control" />
 </div>
@@ -103,7 +103,7 @@
 </ul>
 
 @code {
-    private enum CompressionFormat { GZip, Brotli }
+    private enum CompressionFormat { GZip, Brotli, Deflate, ZLib }
 
     private CompressionMode compressionMode = CompressionMode.Compress;
     private CompressionLevel compressionLevel = CompressionLevel.Optimal;
@@ -111,23 +111,48 @@
     private bool anyFiles => files.Any();
 
     private CompressionFormat _format = CompressionFormat.GZip;
-    private string Extension => _format == CompressionFormat.Brotli ? ".br" : ".gz";
+    private string FormatName => _format switch
+    {
+        CompressionFormat.Brotli  => "brotli",
+        CompressionFormat.Deflate => "deflate",
+        CompressionFormat.ZLib    => "zlib",
+        _                         => "gzip"
+    };
+    private string Extension => _format switch
+    {
+        CompressionFormat.Brotli  => ".br",
+        CompressionFormat.Deflate => ".deflate",
+        CompressionFormat.ZLib    => ".zlib",
+        _                         => ".gz"
+    };
 
     protected override void OnInitialized()
     {
-        if (new Uri(NavManager.Uri).Host.Contains("brotli"))
-            _format = CompressionFormat.Brotli;
+        var host = new Uri(NavManager.Uri).Host;
+        _format = host switch
+        {
+            _ when host.Contains("brotli")  => CompressionFormat.Brotli,
+            _ when host.Contains("deflate") => CompressionFormat.Deflate,
+            _ when host.Contains("zlib")    => CompressionFormat.ZLib,
+            _                               => CompressionFormat.GZip
+        };
     }
 
-    private Stream CreateCompressStream(Stream output, CompressionLevel level) =>
-        _format == CompressionFormat.Brotli
-            ? new BrotliStream(output, level)
-            : new GZipStream(output, level);
+    private Stream CreateCompressStream(Stream output, CompressionLevel level) => _format switch
+    {
+        CompressionFormat.Brotli  => new BrotliStream(output, level),
+        CompressionFormat.Deflate => new DeflateStream(output, level),
+        CompressionFormat.ZLib    => new ZLibStream(output, level),
+        _                         => new GZipStream(output, level)
+    };
 
-    private Stream CreateDecompressStream(Stream input) =>
-        _format == CompressionFormat.Brotli
-            ? new BrotliStream(input, CompressionMode.Decompress)
-            : new GZipStream(input, CompressionMode.Decompress);
+    private Stream CreateDecompressStream(Stream input) => _format switch
+    {
+        CompressionFormat.Brotli  => new BrotliStream(input, CompressionMode.Decompress),
+        CompressionFormat.Deflate => new DeflateStream(input, CompressionMode.Decompress),
+        CompressionFormat.ZLib    => new ZLibStream(input, CompressionMode.Decompress),
+        _                         => new GZipStream(input, CompressionMode.Decompress)
+    };
 
     private void OnFilesChange(InputFileChangeEventArgs e)
     {
