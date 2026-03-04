@@ -160,7 +160,7 @@
                 </p>
             </div>
         </div>
-        <div class="container pt-4">
+        <div class="container pt-4 pb-5">
             <div class="feature-grid">
                 <div class="feature-item"><span class="feature-icon">🔒</span> Files processed on your device</div>
                 <div class="feature-item"><span class="feature-icon">🚫</span> No files transmitted</div>
@@ -256,6 +256,27 @@
     })();
     </script>
     <script>
+        window.getSaveFileHandle = async (suggestedName) => {
+            if (!('showSaveFilePicker' in window)) return null;
+            try { return await window.showSaveFilePicker({ suggestedName }); }
+            catch { return null; }
+        };
+        window.getDirectoryHandle = async () => {
+            if (!('showDirectoryPicker' in window)) return null;
+            try { return await window.showDirectoryPicker(); }
+            catch { return null; }
+        };
+        window.saveToFileHandle = async (fileHandle, contentStreamReference) => {
+            const writable = await fileHandle.createWritable();
+            try { await writable.write(await contentStreamReference.arrayBuffer()); }
+            finally { await writable.close(); }
+        };
+        window.saveToDirectory = async (dirHandle, fileName, contentStreamReference) => {
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            try { await writable.write(await contentStreamReference.arrayBuffer()); }
+            finally { await writable.close(); }
+        };
         window.downloadFileFromStream = async (fileName, contentStreamReference) => {
             const arrayBuffer = await contentStreamReference.arrayBuffer();
             const blob = new Blob([arrayBuffer]);
@@ -266,7 +287,7 @@
             anchorElement.click();
             anchorElement.remove();
             setTimeout(() => URL.revokeObjectURL(url), 60000);
-        }
+        };
     </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>

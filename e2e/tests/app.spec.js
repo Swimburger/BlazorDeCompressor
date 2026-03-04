@@ -103,6 +103,12 @@ for (const fmt of roundTripFormats) {
     fs.writeFileSync(inputFile, content);
 
     try {
+      // Force anchor-download path so waitForEvent('download') works reliably.
+      // File System Access API behaviour is covered by file-system-api.spec.js.
+      await page.addInitScript(() => {
+        window.showSaveFilePicker = async () => null;
+        window.showDirectoryPicker = async () => null;
+      });
       await page.goto(fmt.url);
       await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
 
