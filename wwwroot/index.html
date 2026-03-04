@@ -46,8 +46,7 @@
         }
 
         footer img {
-            float: left;
-            margin-right: 5px;
+            display: block;
         }
 
         #blazor-error-ui {
@@ -189,13 +188,10 @@
             <a class="dismiss">🗙</a>
         </div>
     </main>
-    <footer class="footer mt-auto py-3">
-        <div class="container">
-            <img src="https://swimburger.net/content/img/burger.svg" width="40" height="22" alt="Swimburger logo" />
-            Tool built using Blazor WebAssembly by Niels Swimberghe; Follow Niels' blog at
-            <a href="https://swimburger.net">swimburger.net</a> or on <a
-                href="https://twitter.com/RealSwimburger">Twitter</a>;
-            <a href="https://privacypolicies.com/privacy/view/95b2095f4609044d9618c21b06f5df75">Privacy Policy</a>
+    <footer class="footer mt-auto py-2">
+        <div class="container d-flex align-items-center gap-3" style="font-size:.875rem">
+            <img src="https://swimburger.net/content/img/burger.svg" width="32" height="18" alt="Swimburger logo" />
+            <span>Tool by Niels Swimberghe — <a href="https://swimburger.net">swimburger.net</a> · <a href="https://twitter.com/RealSwimburger">X (Twitter)</a> · <a href="https://privacypolicies.com/privacy/view/95b2095f4609044d9618c21b06f5df75">Privacy Policy</a></span>
         </div>
     </footer>
     <script>
