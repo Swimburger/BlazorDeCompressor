@@ -249,7 +249,7 @@
     private void OnFilesChange(InputFileChangeEventArgs e)
     {
         files.Clear();
-        files.AddRange(e.GetMultipleFiles().Select(f => new Models.File
+        files.AddRange(e.GetMultipleFiles(int.MaxValue).Select(f => new Models.File
         {
             BrowserFile = f,
             OriginalName = f.Name,
