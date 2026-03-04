@@ -192,12 +192,6 @@
 
     private Stream CreateCompressStream(Stream output, CompressionLevel level)
     {
-        if (_format == CompressionFormat.Brotli)
-        {
-            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress, leaveOpen: true);
-            s.SetQuality(ToBrotliQuality(level));
-            return s;
-        }
         if (_format == CompressionFormat.ZStd)
             return new ZstdSharp.CompressionStream(output, ToZstdLevel(level));
         return _format switch
@@ -226,7 +220,6 @@
 
     private Stream CreateDecompressStream(Stream input) => _format switch
     {
-        CompressionFormat.Brotli  => new BrotliSharpLib.BrotliStream(input, CompressionMode.Decompress),
         CompressionFormat.Deflate => new DeflateStream(input, CompressionMode.Decompress),
         CompressionFormat.ZLib    => new ZLibStream(input, CompressionMode.Decompress),
         CompressionFormat.ZStd    => new ZstdSharp.DecompressionStream(input),
@@ -293,10 +286,20 @@
 
                         var browserFile = file.BrowserFile;
                         using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                        outputStream = new MemoryStream();
-                        using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
+                        if (_format == CompressionFormat.Brotli)
                         {
-                            await inputStream.CopyToAsync(compressionStream);
+                            using var ms = new MemoryStream();
+                            await inputStream.CopyToAsync(ms);
+                            var compressed = await JS.InvokeAsync<byte[]>("brotliCompress", ms.ToArray(), ToBrotliQuality(compressionLevel));
+                            outputStream = new MemoryStream(compressed);
+                        }
+                        else
+                        {
+                            outputStream = new MemoryStream();
+                            using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
+                            {
+                                await inputStream.CopyToAsync(compressionStream);
+                            }
                         }
                         file.OutputSize = outputStream.Length;
                     }
@@ -354,19 +357,16 @@
 
                         var browserFile = file.BrowserFile;
                         using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                        outputStream = new MemoryStream();
                         if (_format == CompressionFormat.Brotli)
                         {
-                            // BrotliSharpLib.BrotliStream.ReadAsync calls synchronous Read internally,
-                            // which fails on IBrowserFile async streams — pre-buffer first.
-                            using var bufferedInput = new MemoryStream();
-                            await inputStream.CopyToAsync(bufferedInput);
-                            bufferedInput.Position = 0;
-                            using var s = CreateDecompressStream(bufferedInput);
-                            s.CopyTo(outputStream);
+                            using var ms = new MemoryStream();
+                            await inputStream.CopyToAsync(ms);
+                            var decompressed = await JS.InvokeAsync<byte[]>("brotliDecompress", ms.ToArray());
+                            outputStream = new MemoryStream(decompressed);
                         }
                         else
                         {
+                            outputStream = new MemoryStream();
                             using var decompressionStream = CreateDecompressStream(inputStream);
                             await decompressionStream.CopyToAsync(outputStream);
                         }
