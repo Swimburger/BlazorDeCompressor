@@ -194,7 +194,7 @@
     {
         if (_format == CompressionFormat.Brotli)
         {
-            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress, true);
+            var s = new BrotliSharpLib.BrotliStream(output, CompressionMode.Compress, leaveOpen: true);
             s.SetQuality(ToBrotliQuality(level));
             return s;
         }
@@ -268,73 +268,97 @@
 
     private async Task CompressFiles()
     {
+        var newNames = files.Select(f => $"{f.OriginalName}{Extension}").ToList();
+        IJSObjectReference? singleHandle = null;
+        IJSObjectReference? dirHandle = null;
+        if (newNames.Count == 1)
+            singleHandle = await JS.InvokeAsync<IJSObjectReference?>("getSaveFileHandle", newNames[0]);
+        else if (newNames.Count > 1)
+            dirHandle = await JS.InvokeAsync<IJSObjectReference?>("getDirectoryHandle");
+
         var tasks = new List<Task>();
         foreach (var file in files)
         {
             var task = Task.Run(async () =>
             {
-                await _semaphore.WaitAsync();
+                MemoryStream? outputStream = null;
                 try
                 {
-                    file.Status = "Compressing";
-                    file.NewName = $"{file.OriginalName}{Extension}";
-                    await InvokeAsync(StateHasChanged);
-
+                    await _semaphore.WaitAsync();
                     try
                     {
+                        file.Status = "Compressing";
+                        file.NewName = $"{file.OriginalName}{Extension}";
+                        await InvokeAsync(StateHasChanged);
+
                         var browserFile = file.BrowserFile;
                         using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                        using var outputStream = new MemoryStream();
+                        outputStream = new MemoryStream();
                         using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
                         {
                             await inputStream.CopyToAsync(compressionStream);
                         }
                         file.OutputSize = outputStream.Length;
-                        outputStream.Position = 0;
-                        using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                    }
+                    finally { _semaphore.Release(); }
+
+                    outputStream.Position = 0;
+                    using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                    if (singleHandle is not null)
+                        await JS.InvokeVoidAsync("saveToFileHandle", singleHandle, streamRef);
+                    else if (dirHandle is not null)
+                        await JS.InvokeVoidAsync("saveToDirectory", dirHandle, file.NewName, streamRef);
+                    else
                         await JS.InvokeVoidAsync("downloadFileFromStream", file.NewName, streamRef);
 
-                        file.Status = "Finished";
-                    }
-                    catch(Exception ex){
-                        file.Status = $"Error: {ex.Message}";
-                    }
-
-                    await InvokeAsync(StateHasChanged);
+                    file.Status = "Finished";
                 }
-                finally { _semaphore.Release(); }
+                catch(Exception ex){
+                    file.Status = $"Error: {ex.Message}";
+                }
+                finally { outputStream?.Dispose(); }
+                await InvokeAsync(StateHasChanged);
             });
             tasks.Add(task);
         }
 
         await Task.WhenAll(tasks);
+        if (singleHandle is not null) await singleHandle.DisposeAsync();
+        if (dirHandle is not null) await dirHandle.DisposeAsync();
     }
 
     private async Task DecompressFiles()
     {
+        var newNames = files.Select(f => f.OriginalName.Replace(Extension, "")).ToList();
+        IJSObjectReference? singleHandle = null;
+        IJSObjectReference? dirHandle = null;
+        if (newNames.Count == 1)
+            singleHandle = await JS.InvokeAsync<IJSObjectReference?>("getSaveFileHandle", newNames[0]);
+        else if (newNames.Count > 1)
+            dirHandle = await JS.InvokeAsync<IJSObjectReference?>("getDirectoryHandle");
+
         var tasks = new List<Task>();
         foreach (var file in files)
         {
             var task = Task.Run(async () =>
             {
-                await _semaphore.WaitAsync();
+                MemoryStream? outputStream = null;
                 try
                 {
-                    file.Status = "Decompressing";
-                    file.NewName = file.OriginalName.Replace(Extension, "");
-                    await InvokeAsync(StateHasChanged);
-
+                    await _semaphore.WaitAsync();
                     try
                     {
+                        file.Status = "Decompressing";
+                        file.NewName = file.OriginalName.Replace(Extension, "");
+                        await InvokeAsync(StateHasChanged);
+
                         var browserFile = file.BrowserFile;
                         using var inputStream = browserFile.OpenReadStream(long.MaxValue);
-                        using var outputStream = new MemoryStream();
-                        // BrotliSharpLib.BrotliStream.ReadAsync calls synchronous Read internally, which
-                        // fails on IBrowserFile streams (async-only). Pre-buffer the compressed input into
-                        // a MemoryStream first. This adds a copy of the compressed data in memory, but
-                        // compressed files are typically small relative to their decompressed output.
+                        outputStream = new MemoryStream();
                         if (_format == CompressionFormat.Brotli)
                         {
+                            // BrotliSharpLib.BrotliStream.ReadAsync calls synchronous Read internally,
+                            // which fails on IBrowserFile async streams — pre-buffer first.
                             using var bufferedInput = new MemoryStream();
                             await inputStream.CopyToAsync(bufferedInput);
                             bufferedInput.Position = 0;
@@ -343,28 +367,35 @@
                         }
                         else
                         {
-                            using (var decompressionStream = CreateDecompressStream(inputStream))
-                            {
-                                await decompressionStream.CopyToAsync(outputStream);
-                            }
+                            using var decompressionStream = CreateDecompressStream(inputStream);
+                            await decompressionStream.CopyToAsync(outputStream);
                         }
                         file.OutputSize = outputStream.Length;
-                        outputStream.Position = 0;
-                        using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                    }
+                    finally { _semaphore.Release(); }
+
+                    outputStream.Position = 0;
+                    using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
+                    if (singleHandle is not null)
+                        await JS.InvokeVoidAsync("saveToFileHandle", singleHandle, streamRef);
+                    else if (dirHandle is not null)
+                        await JS.InvokeVoidAsync("saveToDirectory", dirHandle, file.NewName, streamRef);
+                    else
                         await JS.InvokeVoidAsync("downloadFileFromStream", file.NewName, streamRef);
 
-                        file.Status = "Finished";
-                    }
-                    catch(Exception ex){
-                        file.Status = $"Error: {ex.Message}";
-                    }
-                    await InvokeAsync(StateHasChanged);
+                    file.Status = "Finished";
                 }
-                finally { _semaphore.Release(); }
+                catch(Exception ex){
+                    file.Status = $"Error: {ex.Message}";
+                }
+                finally { outputStream?.Dispose(); }
+                await InvokeAsync(StateHasChanged);
             });
             tasks.Add(task);
         }
 
         await Task.WhenAll(tasks);
+        if (singleHandle is not null) await singleHandle.DisposeAsync();
+        if (dirHandle is not null) await dirHandle.DisposeAsync();
     }
 }
