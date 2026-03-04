@@ -13,7 +13,7 @@
             }
             else
             {
-                <a class="nav-link" href="@FormatUrl(fmt)">@FormatDisplayName(fmt)</a>
+                <a class="nav-link" href="@_formatUrls[fmt]">@FormatDisplayName(fmt)</a>
             }
         </li>
     }
@@ -126,10 +126,10 @@
     private CompressionMode compressionMode = CompressionMode.Compress;
     private CompressionLevel compressionLevel = CompressionLevel.Optimal;
     private List<Models.File> files = new List<Models.File>();
-    private bool anyFiles => files.Any();
-
     private CompressionFormat _format = CompressionFormat.GZip;
     private int _dragCount;
+    private bool anyFiles;
+    private readonly Dictionary<CompressionFormat, string> _formatUrls = new();
     private const long WarnFileSizeBytes = 250L * 1024 * 1024;
     private static readonly SemaphoreSlim _semaphore = new(4, 4);
 
@@ -151,20 +151,6 @@
         _                         => "GZIP"
     };
 
-    private string FormatUrl(CompressionFormat fmt)
-    {
-        var uri = new Uri(NavManager.Uri);
-        var host = uri.Host;
-        var currentSlug = FormatName;
-        if (host.Contains(currentSlug))
-        {
-            var newHost = host.Replace(currentSlug, FormatSlug(fmt));
-            var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
-            return $"{uri.Scheme}://{newHost}{port}";
-        }
-        return "#";
-    }
-
     private string FormatName => FormatSlug(_format);
     private string Extension => _format switch
     {
@@ -177,7 +163,8 @@
 
     protected override void OnInitialized()
     {
-        var host = new Uri(NavManager.Uri).Host;
+        var uri = new Uri(NavManager.Uri);
+        var host = uri.Host;
         _format = host switch
         {
             _ when host.Contains("brotli")  => CompressionFormat.Brotli,
@@ -186,6 +173,21 @@
             _ when host.Contains("zstd")    => CompressionFormat.ZStd,
             _                               => CompressionFormat.GZip
         };
+
+        var currentSlug = FormatSlug(_format);
+        var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
+        foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
+        {
+            if (host.Contains(currentSlug))
+            {
+                var newHost = host.Replace(currentSlug, FormatSlug(fmt));
+                _formatUrls[fmt] = $"{uri.Scheme}://{newHost}{port}";
+            }
+            else
+            {
+                _formatUrls[fmt] = "#";
+            }
+        }
     }
 
     private Stream CreateCompressStream(Stream output, CompressionLevel level)
@@ -261,6 +263,7 @@
             OriginalSize = f.Size,
             Status = "To Process"
         }));
+        anyFiles = files.Count > 0;
     }
 
     private async Task CompressFiles()
@@ -275,7 +278,7 @@
                 {
                     file.Status = "Compressing";
                     file.NewName = $"{file.OriginalName}{Extension}";
-                    StateHasChanged();
+                    await InvokeAsync(StateHasChanged);
 
                     try
                     {
@@ -297,7 +300,7 @@
                         file.Status = $"Error: {ex.Message}";
                     }
 
-                    StateHasChanged();
+                    await InvokeAsync(StateHasChanged);
                 }
                 finally { _semaphore.Release(); }
             });
@@ -319,7 +322,7 @@
                 {
                     file.Status = "Decompressing";
                     file.NewName = file.OriginalName.Replace(Extension, "");
-                    StateHasChanged();
+                    await InvokeAsync(StateHasChanged);
 
                     try
                     {
@@ -355,7 +358,7 @@
                     catch(Exception ex){
                         file.Status = $"Error: {ex.Message}";
                     }
-                    StateHasChanged();
+                    await InvokeAsync(StateHasChanged);
                 }
                 finally { _semaphore.Release(); }
             });
