@@ -289,6 +289,18 @@
             setTimeout(() => URL.revokeObjectURL(url), 60000);
         };
     </script>
+    <script type="module">
+        import brotliWasm from 'https://cdn.jsdelivr.net/npm/brotli-wasm@3.0.1/index.web.js';
+        const brotliReady = brotliWasm;
+        window.brotliCompress = async (data, quality) => {
+            const brotli = await brotliReady;
+            return brotli.compress(data, { quality });
+        };
+        window.brotliDecompress = async (data) => {
+            const brotli = await brotliReady;
+            return brotli.decompress(data);
+        };
+    </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
 </body>
