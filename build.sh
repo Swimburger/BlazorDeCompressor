@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-sdk_version="11.0.100"
+sdk_channel="11.0"
 
 if command -v dotnet >/dev/null 2>&1 && dotnet --version >/dev/null 2>&1; then
   dotnet_command="dotnet"
 else
   curl -fsSL https://dot.net/v1/dotnet-install.sh -o .dotnet-install.sh
   chmod +x .dotnet-install.sh
-  ./.dotnet-install.sh --version "$sdk_version" --install-dir ./.dotnet
+  ./.dotnet-install.sh --channel "$sdk_channel" --quality GA --install-dir ./.dotnet
   dotnet_command="./.dotnet/dotnet"
 fi
 

@@ -8,7 +8,7 @@ branch is explicitly approved and merged or deployed.
 
 | Area | Before | After | Notes |
 | --- | --- | --- | --- |
-| .NET SDK | Unpinned (the machine-selected SDK could be used) | 11.0.100 in `global.json` | Current stable SDK; `latestPatch` permits servicing patches within the pinned feature band. |
+| .NET SDK | Unpinned (the machine-selected SDK could be used) | 11.0.100 minimum in `global.json` | `latestFeature` selects the newest installed stable .NET 11 feature band and patch. |
 | ASP.NET Core Blazor WebAssembly | 10.0.2 / `net10.0` | 11.0.0 / `net11.0` | Current stable STS release, supported through November 2028. |
 | WebAssembly workload | Not installed by the build | `wasm-tools` installed and verified | Enables runtime relinking and removes the publish warning that optimization was being skipped. |
 | ZstdSharp.Port | 0.8.7 | 0.8.8 | Latest stable release. |
@@ -30,8 +30,10 @@ are retained because `cf` and Wrangler request them independently.
 
 ### .NET 11 and Blazor WebAssembly
 
-- Pinned SDK 11.0.100 and runtime packages 11.0.0 so local, CI, and Cloudflare builds select
-  the same current stable toolchain.
+- Set SDK 11.0.100 as the minimum with `latestFeature` roll-forward and prereleases disabled, so
+  local, CI, and Cloudflare builds use the newest available stable .NET 11 feature band. The
+  fallback installer resolves the latest GA SDK from the 11.0 channel instead of hard-coding one
+  SDK patch.
 - Adopted the .NET 11 standalone WebAssembly hosting model: replaced the retired
   `Microsoft.AspNetCore.Components.WebAssembly.DevServer` package with
   `Microsoft.AspNetCore.Components.Gateway`, enabled `StaticWebAssetSpaFallbackEnabled`, and
@@ -53,6 +55,8 @@ are retained because `cf` and Wrangler request them independently.
 Microsoft's guidance says `wasm-tools` enables runtime relinking and is required for AOT, while
 AOT commonly improves CPU speed at the cost of a substantially larger download. See the
 [.NET 11 release notes](https://github.com/dotnet/core/blob/main/release-notes/11.0/README.md),
+[SDK selection guidance](https://learn.microsoft.com/dotnet/core/tools/global-json),
+[dotnet-install reference](https://learn.microsoft.com/dotnet/core/tools/dotnet-install-script),
 [ASP.NET Core 10-to-11 migration guide](https://learn.microsoft.com/aspnet/core/migration/100-to-110?view=aspnetcore-11.0),
 [ASP.NET Core 11 release notes](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-11.0),
 [WebAssembly build tools and AOT guide](https://learn.microsoft.com/aspnet/core/blazor/webassembly-build-tools-and-aot?view=aspnetcore-11.0),
