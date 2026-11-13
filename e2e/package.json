@@ -1,9 +1,16 @@
 {
   "name": "e2e",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "npm@11.19.1",
   "scripts": {
-    "test": "dotnet build .. && node kill-port.js 5001 && playwright test"
+    "test": "dotnet build .. --configuration Release --disable-build-servers -p:UseSharedCompilation=false && node kill-port.js 5001 && playwright test",
+    "test:published": "playwright test --config=playwright.published.config.js",
+    "test:live": "playwright test --config=playwright.live.config.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.65.0"
   }
 }

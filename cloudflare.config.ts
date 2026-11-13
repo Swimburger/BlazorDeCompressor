@@ -16,6 +16,15 @@ export default defineConfig({
     },
     observability: {
       enabled: true,
+      redactQueryString: true,
+      logs: {
+        enabled: true,
+        headSamplingRate: 1,
+      },
+      traces: {
+        enabled: true,
+        headSamplingRate: 0.01,
+      },
     },
   },
 });
