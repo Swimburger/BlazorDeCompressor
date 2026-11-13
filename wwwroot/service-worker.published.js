@@ -10,6 +10,7 @@ const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/ ];
 const offlineAssetsExclude = [ /^service-worker\.js$/ ];
+const isZstdSite = self.location.hostname.includes('zstd');
 
 async function onInstall(event) {
     console.info('Service worker: Install');
@@ -18,6 +19,7 @@ async function onInstall(event) {
     const assetsRequests = self.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
+        .filter(asset => isZstdSite || (!asset.url.includes('ZstdSharp.') && !asset.url.includes('BlazorDeCompressor.Zstd.')))
         .map(asset => new Request(asset.url));
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
 }
@@ -44,5 +46,17 @@ async function onFetch(event) {
         cachedResponse = await cache.match(request);
     }
 
-    return cachedResponse || fetch(event.request);
+    if (!cachedResponse) return fetch(event.request);
+
+    // Cache Storage exposes decoded bodies while retaining Content-Encoding.
+    // Remove stale encoding metadata before replaying a cached Cloudflare response,
+    // otherwise the browser attempts to decode the already-decoded body again.
+    const headers = new Headers(cachedResponse.headers);
+    headers.delete('content-encoding');
+    headers.delete('content-length');
+    return new Response(cachedResponse.body, {
+        status: cachedResponse.status,
+        statusText: cachedResponse.statusText,
+        headers
+    });
 }

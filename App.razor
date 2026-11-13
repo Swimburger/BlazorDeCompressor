@@ -1,7 +1,10 @@
 @using System.IO
 @using System.IO.Compression
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.WebAssembly.Services
 @inject IJSRuntime JS
 @inject NavigationManager NavManager
+@inject LazyAssemblyLoader AssemblyLoader
 
 <ul class="nav nav-pills mb-4 pb-1 border-bottom" role="navigation" aria-label="Compression format">
     @foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
@@ -130,6 +133,7 @@
     private int _dragCount;
     private bool anyFiles;
     private readonly Dictionary<CompressionFormat, string> _formatUrls = new();
+    private Type? _zstdStreamFactory;
     private const long WarnFileSizeBytes = 250L * 1024 * 1024;
     private static readonly SemaphoreSlim _semaphore = new(4, 4);
 
@@ -161,7 +165,7 @@
         _                         => ".gz"
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         var uri = new Uri(NavManager.Uri);
         var host = uri.Host;
@@ -173,6 +177,17 @@
             _ when host.Contains("zstd")    => CompressionFormat.ZStd,
             _                               => CompressionFormat.GZip
         };
+
+        if (_format == CompressionFormat.ZStd)
+        {
+            var assemblies = await AssemblyLoader.LoadAssembliesAsync([
+                "BlazorDeCompressor.Zstd.wasm",
+                "ZstdSharp.wasm"
+            ]);
+            _zstdStreamFactory = assemblies
+                .Single(assembly => assembly.GetName().Name == "BlazorDeCompressor.Zstd")
+                .GetType("BlazorDeCompressor.Zstd.ZstdStreamFactory", throwOnError: true);
+        }
 
         var currentSlug = FormatSlug(_format);
         var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
@@ -193,7 +208,7 @@
     private Stream CreateCompressStream(Stream output, CompressionLevel level)
     {
         if (_format == CompressionFormat.ZStd)
-            return new ZstdSharp.CompressionStream(output, ToZstdLevel(level));
+            return InvokeZstdFactory("CreateCompressionStream", output, ToZstdLevel(level));
         return _format switch
         {
             CompressionFormat.Deflate => new DeflateStream(output, level, leaveOpen: true),
@@ -218,13 +233,25 @@
         _                              => 3
     };
 
-    private Stream CreateDecompressStream(Stream input) => _format switch
+    private Stream CreateDecompressStream(Stream input)
     {
-        CompressionFormat.Deflate => new DeflateStream(input, CompressionMode.Decompress),
-        CompressionFormat.ZLib    => new ZLibStream(input, CompressionMode.Decompress),
-        CompressionFormat.ZStd    => new ZstdSharp.DecompressionStream(input),
-        _                         => new GZipStream(input, CompressionMode.Decompress)
-    };
+        if (_format == CompressionFormat.ZStd)
+            return InvokeZstdFactory("CreateDecompressionStream", input);
+        return _format switch
+        {
+            CompressionFormat.Deflate => new DeflateStream(input, CompressionMode.Decompress),
+            CompressionFormat.ZLib    => new ZLibStream(input, CompressionMode.Decompress),
+            _                         => new GZipStream(input, CompressionMode.Decompress)
+        };
+    }
+
+    private Stream InvokeZstdFactory(string methodName, params object[] arguments)
+    {
+        var method = _zstdStreamFactory?.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static)
+            ?? throw new InvalidOperationException("The Zstandard compression module is not loaded.");
+        return (Stream)(method.Invoke(null, arguments)
+            ?? throw new InvalidOperationException($"{methodName} did not return a stream."));
+    }
 
     private static string FormatBytes(long bytes)
     {
