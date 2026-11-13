@@ -79,13 +79,18 @@
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles)">Compress Files</button>
+        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Compress Files</button>
     }
     else
     {
-        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles)">Decompress Files</button>
+        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Decompress Files</button>
     }
-    @if(!anyFiles){
+    @if (!IsFormatReady)
+    {
+        <div class="text-muted small text-center mt-1" role="status">Loading Zstandard module…</div>
+    }
+    else if (!anyFiles)
+    {
         <div class="text-danger small text-center mt-1">No files selected</div>
     }
 </div>
@@ -134,6 +139,7 @@
     private bool anyFiles;
     private readonly Dictionary<CompressionFormat, string> _formatUrls = new();
     private Type? _zstdStreamFactory;
+    private bool IsFormatReady => _format != CompressionFormat.ZStd || _zstdStreamFactory is not null;
     private const long WarnFileSizeBytes = 250L * 1024 * 1024;
     private static readonly SemaphoreSlim _semaphore = new(4, 4);
 

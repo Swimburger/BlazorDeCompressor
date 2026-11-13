@@ -29,14 +29,18 @@ for (const format of formats) {
 
       let downloadPromise = page.waitForEvent('download');
       await page.locator('input[type="file"]').setInputFiles(inputPath);
-      await page.getByRole('button', { name: 'Compress Files' }).click();
+      const compressButton = page.getByRole('button', { name: 'Compress Files' });
+      await expect(compressButton).toBeEnabled({ timeout: 30000 });
+      await compressButton.click();
       const compressed = await downloadPromise;
       await compressed.saveAs(compressedPath);
 
       await page.locator('label[for="radio-decompress"]').click();
       downloadPromise = page.waitForEvent('download');
       await page.locator('input[type="file"]').setInputFiles(compressedPath);
-      await page.getByRole('button', { name: 'Decompress Files' }).click();
+      const decompressButton = page.getByRole('button', { name: 'Decompress Files' });
+      await expect(decompressButton).toBeEnabled({ timeout: 30000 });
+      await decompressButton.click();
       const decompressed = await downloadPromise;
       expect(fs.readFileSync(await decompressed.path(), 'utf8')).toBe(content);
     } finally {
