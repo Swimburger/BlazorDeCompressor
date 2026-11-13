@@ -92,6 +92,8 @@ and [Workers production practices](https://developers.cloudflare.com/workers/bes
 - Moved the CI and legacy Azure Static Web Apps workflows to Ubuntu 26.04 and Node 24-capable
   action majors. GitHub retired Node 20 action execution, so upgrading only the job's Node
   installation would not have addressed the deprecation warnings.
+- Configured Git's intended `main` default for checkout's temporary repository, removing the
+  Git 3.0 default-branch migration warning instead of hiding it.
 - `setup-dotnet` reads `global.json` and installs `wasm-tools`. CI separately cleans, restores,
   builds, publishes with optimization, validates Cloudflare Build Output, and runs development,
   published-PWA, and live-production suites.
