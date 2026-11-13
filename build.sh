@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-sdk_version="10.0.404"
+sdk_version="11.0.100"
 
 if command -v dotnet >/dev/null 2>&1 && dotnet --version >/dev/null 2>&1; then
   dotnet_command="dotnet"
