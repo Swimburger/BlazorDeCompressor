@@ -120,8 +120,10 @@ and [Workers production practices](https://developers.cloudflare.com/workers/bes
   Esbuild, FSEvents, and the two Workerd versions are approved; unreviewed future lifecycle
   scripts fail installation.
 - Removed the Azure action's GitHub token because it was only used for automated PR comments.
-  Deployment behavior remains otherwise unchanged, and no workflow may communicate on the
-  user's behalf through that token.
+  The workflow now builds .NET 11 itself and uploads the prebuilt output because Azure Oryx does
+  not yet support .NET 11. Preview and main-branch deployment behavior remains unchanged, the
+  workflow has read-only repository permissions, and no workflow may communicate on the user's
+  behalf through a GitHub token.
 
 Primary references: [GitHub's Node 20 retirement notice](https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/),
 [Ubuntu 26.04 availability](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/),
