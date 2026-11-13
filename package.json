@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "build": "dotnet publish BlazorDeCompressor.csproj -c Release -o dist",
+    "build": "./build.sh",
     "deploy": "npm run build && cf deploy"
   },
   "devDependencies": {

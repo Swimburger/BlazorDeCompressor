@@ -443,6 +443,8 @@ $RECYCLE.BIN/
 
 # Cloudflare build and local environment files
 .cloudflare/
+.dotnet/
+.dotnet-install.sh
 .dev.vars*
 .env*
 dist/
