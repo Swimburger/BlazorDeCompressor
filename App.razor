@@ -178,17 +178,6 @@
             _                               => CompressionFormat.GZip
         };
 
-        if (_format == CompressionFormat.ZStd)
-        {
-            var assemblies = await AssemblyLoader.LoadAssembliesAsync([
-                "BlazorDeCompressor.Zstd.wasm",
-                "ZstdSharp.wasm"
-            ]);
-            _zstdStreamFactory = assemblies
-                .Single(assembly => assembly.GetName().Name == "BlazorDeCompressor.Zstd")
-                .GetType("BlazorDeCompressor.Zstd.ZstdStreamFactory", throwOnError: true);
-        }
-
         var currentSlug = FormatSlug(_format);
         var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
         foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
@@ -202,6 +191,17 @@
             {
                 _formatUrls[fmt] = "#";
             }
+        }
+
+        if (_format == CompressionFormat.ZStd)
+        {
+            var assemblies = await AssemblyLoader.LoadAssembliesAsync([
+                "BlazorDeCompressor.Zstd.wasm",
+                "ZstdSharp.wasm"
+            ]);
+            _zstdStreamFactory = assemblies
+                .Single(assembly => assembly.GetName().Name == "BlazorDeCompressor.Zstd")
+                .GetType("BlazorDeCompressor.Zstd.ZstdStreamFactory", throwOnError: true);
         }
     }
 
@@ -286,15 +286,27 @@
         anyFiles = files.Count > 0;
     }
 
+    private async Task<IJSObjectReference?> TryGetFileSystemHandle(string identifier, params object?[] args)
+    {
+        try
+        {
+            return await JS.InvokeAsync<IJSObjectReference?>(identifier, args);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
     private async Task CompressFiles()
     {
         var newNames = files.Select(f => $"{f.OriginalName}{Extension}").ToList();
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
         if (newNames.Count == 1)
-            singleHandle = await JS.InvokeAsync<IJSObjectReference?>("getSaveFileHandle", newNames[0]);
+            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", newNames[0]);
         else if (newNames.Count > 1)
-            dirHandle = await JS.InvokeAsync<IJSObjectReference?>("getDirectoryHandle");
+            dirHandle = await TryGetFileSystemHandle("getDirectoryHandle");
 
         var tasks = new List<Task>();
         foreach (var file in files)
@@ -363,9 +375,9 @@
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
         if (newNames.Count == 1)
-            singleHandle = await JS.InvokeAsync<IJSObjectReference?>("getSaveFileHandle", newNames[0]);
+            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", newNames[0]);
         else if (newNames.Count > 1)
-            dirHandle = await JS.InvokeAsync<IJSObjectReference?>("getDirectoryHandle");
+            dirHandle = await TryGetFileSystemHandle("getDirectoryHandle");
 
         var tasks = new List<Task>();
         foreach (var file in files)
