@@ -160,6 +160,7 @@ test('SmallestSize compression produces output <= Fastest, and round-trips corre
     // Compress at Fastest (re-select file to reset list)
     await page.locator('label[for="radio-fastest"]').click();
     downloadPromise = page.waitForEvent('download');
+    await page.locator('input[type="file"]').setInputFiles([]);
     await page.locator('input[type="file"]').setInputFiles(inputFile);
     await page.getByRole('button', { name: 'Compress Files' }).click();
     const fastestDownload = await downloadPromise;
