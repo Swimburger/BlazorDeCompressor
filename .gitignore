@@ -440,3 +440,10 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Cloudflare build and local environment files
+.cloudflare/
+.dev.vars*
+.env*
+dist/
+node_modules/
