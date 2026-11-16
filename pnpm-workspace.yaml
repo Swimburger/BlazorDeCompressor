@@ -1,0 +1,8 @@
+packages:
+  - .
+  - e2e
+
+allowBuilds:
+  esbuild: true
+  fsevents: true
+  workerd: true
