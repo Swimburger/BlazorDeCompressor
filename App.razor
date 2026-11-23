@@ -36,7 +36,7 @@
 @if (compressionMode == CompressionMode.Compress)
 {
 <div class="mb-3">
-    <label class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</label>
+    <div class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</div>
     <div class="btn-group d-flex btn-group-sm compression-level-group" role="group" aria-label="Compression level">
         <input id="radio-smallest" class="btn-check" type="radio" autocomplete="off"
             checked="@(compressionLevel == CompressionLevel.SmallestSize)"
@@ -73,17 +73,18 @@
     }
     <p class="text-muted small mb-0">or drag and drop here</p>
     <InputFile OnChange="OnFilesChange" multiple class="drop-zone-input"
+        aria-label="@(compressionMode == CompressionMode.Compress ? $"Choose files to compress to {FormatName}" : $"Choose {FormatName} files to decompress")"
         accept="@(compressionMode == CompressionMode.Decompress ? Extension : "")" />
 </div>
 
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Compress Files</button>
+        <button class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Compress Files</button>
     }
     else
     {
-        <button role="button" class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Decompress Files</button>
+        <button class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Decompress Files</button>
     }
     @if (!IsFormatReady)
     {
@@ -91,7 +92,7 @@
     }
     else if (!anyFiles)
     {
-        <div class="text-danger small text-center mt-1">No files selected</div>
+        <div class="text-danger small text-center mt-1" role="status">No files selected</div>
     }
 </div>
 
