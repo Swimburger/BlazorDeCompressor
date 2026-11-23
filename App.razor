@@ -37,7 +37,7 @@
 {
 <div class="mb-3">
     <label class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</label>
-    <div class="btn-group d-flex btn-group-sm" role="group" aria-label="Compression level">
+    <div class="btn-group d-flex btn-group-sm compression-level-group" role="group" aria-label="Compression level">
         <input id="radio-smallest" class="btn-check" type="radio" autocomplete="off"
             checked="@(compressionLevel == CompressionLevel.SmallestSize)"
             @onchange="@(() => compressionLevel = CompressionLevel.SmallestSize)">

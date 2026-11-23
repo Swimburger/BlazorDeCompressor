@@ -15,6 +15,21 @@ test('page title and heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Online GZIP de\/compressor/i })).toBeVisible();
 });
 
+test('supports zoom, dark mode, and a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await page.reload();
+  await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewport).not.toContain('user-scalable=no');
+  expect(viewport).not.toContain('maximum-scale');
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('light dark');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).not.toBe('rgb(255, 255, 255)');
+  await expect(page.locator('.feature-item')).toHaveCount(4);
+});
+
 test('compress mode is selected by default', async ({ page }) => {
   await expect(page.locator('#radio-compress')).toBeChecked();
   await expect(page.locator('#radio-decompress')).not.toBeChecked();

@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>GZIP decompress/compress files from your browser</title>
     <meta name="description"
         content="Use this online GZIP tool to compress and decompress files right in the browser" />
@@ -29,8 +30,32 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
     <style>
+        :root {
+            color-scheme: light dark;
+            --color-surface: #fff;
+            --color-surface-subtle: #eee;
+            --color-text: #212529;
+            --color-border: #767676;
+            --color-focus: #0d6efd;
+            --color-error-surface: #fff3cd;
+            --color-error-text: #664d03;
+            --color-brand-soft: rgba(13, 110, 253, 0.08);
+            --color-brand-softer: rgba(13, 110, 253, 0.04);
+            --color-brand-border: rgba(13, 110, 253, 0.25);
+        }
+
+        body {
+            color: var(--color-text);
+            background-color: var(--color-surface);
+        }
+
+        :where(a, button, input):focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 3px;
+        }
+
         footer {
-            background-color: #eee;
+            background-color: var(--color-surface-subtle);
         }
 
         footer a {
@@ -42,7 +67,8 @@
         }
 
         #blazor-error-ui {
-            background: lightyellow;
+            color: var(--color-error-text);
+            background: var(--color-error-surface);
             bottom: 0;
             box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
             display: none;
@@ -62,7 +88,7 @@
 
         .drop-zone {
             position: relative;
-            border: 2px dashed #dee2e6;
+            border: 2px dashed var(--color-border);
             border-radius: 0.5rem;
             padding: 2.5rem 1.5rem;
             text-align: center;
@@ -72,7 +98,7 @@
 
         .drop-zone--active {
             border-color: #0d6efd;
-            background-color: rgba(13, 110, 253, 0.05);
+            background-color: var(--color-brand-soft);
         }
 
         .drop-zone-input {
@@ -86,8 +112,8 @@
 
         .page-header {
             padding: 3.5rem 0 2.5rem;
-            border-bottom: 1px solid rgba(13, 110, 253, 0.12);
-            background: linear-gradient(135deg, rgba(13,110,253,0.08) 0%, rgba(13,110,253,0.02) 50%, transparent 100%);
+            border-bottom: 1px solid var(--color-brand-border);
+            background: linear-gradient(135deg, var(--color-brand-soft) 0%, var(--color-brand-softer) 50%, transparent 100%);
         }
 
         .feature-grid {
@@ -102,8 +128,8 @@
             align-items: center;
             gap: 0.75rem;
             padding: 0.85rem 1.1rem;
-            background: rgba(13, 110, 253, 0.04);
-            border: 1px solid rgba(13, 110, 253, 0.12);
+            background: var(--color-brand-softer);
+            border: 1px solid var(--color-brand-border);
             border-radius: 0.5rem;
             font-size: 0.9rem;
             font-weight: 500;
@@ -133,8 +159,67 @@
         [data-ea-type].loaded .ea-content {
             margin: 0 !important;
             box-shadow: none !important;
-            background: #eee !important;
+            background: var(--color-surface-subtle) !important;
             border-radius: 0 !important;
+        }
+
+        @media (width <= 767px) {
+            .page-header {
+                padding: 2.5rem 0 2rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .compression-level-group {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .compression-level-group > .btn {
+                border-radius: 0.25rem !important;
+                margin: 1px !important;
+            }
+
+            .list-group-item {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-surface: #17141a;
+                --color-surface-subtle: #2d2731;
+                --color-text: #f5f2f5;
+                --color-border: #8c828e;
+                --color-focus: #6ea8fe;
+                --color-error-surface: #3a3115;
+                --color-error-text: #ffda6a;
+                --color-brand-soft: rgba(110, 168, 254, 0.16);
+                --color-brand-softer: rgba(110, 168, 254, 0.09);
+                --color-brand-border: rgba(110, 168, 254, 0.45);
+                --bs-body-color: #f5f2f5;
+                --bs-body-bg: #17141a;
+                --bs-secondary-color: rgba(245, 242, 245, 0.75);
+                --bs-secondary-bg: #2d2731;
+                --bs-tertiary-bg: #211d24;
+                --bs-border-color: #8c828e;
+                --bs-list-group-color: #f5f2f5;
+                --bs-list-group-bg: #211d24;
+                --bs-list-group-border-color: #8c828e;
+            }
+        }
+
+        @media (forced-colors: active) {
+            .page-header {
+                background-image: none;
+                border-color: CanvasText;
+            }
+
+            :is(.drop-zone, .feature-item) {
+                border-color: CanvasText;
+            }
         }
     </style>
 </head>
@@ -159,7 +244,7 @@
                 <div class="feature-item"><span class="feature-icon">📶</span> Works offline &amp; installable</div>
             </div>
             <div class="row">
-                <div class="col-9">
+                <div class="col-12 col-lg-9">
                     <div id="app">
                         <div class="d-flex justify-content-center align-items-center py-5">
                             <div class="spinner-border text-primary" role="status">
@@ -168,10 +253,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-3">
+                <aside class="col-12 col-lg-3 mt-4 mt-lg-0" aria-label="Advertisement">
                     <script async src="https://media.ethicalads.io/media/client/ethicalads.min.js"></script>
                     <div class="float-end" data-ea-publisher="swimburger-net" data-ea-type="image"></div>
-                </div>
+                </aside>
             </div>
         </div>
         <div id="blazor-error-ui">
