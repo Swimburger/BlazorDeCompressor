@@ -15,12 +15,9 @@ test('page title and heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Online GZIP de\/compressor/i })).toBeVisible();
 });
 
-test('uses the adaptive raised EthicalAds theme', async ({ page }) => {
-  const placement = page.locator('.ethical-ad-slot [data-ea-publisher]');
-
-  await expect(placement).toHaveCount(1);
-  await expect(placement).toHaveClass(/\badaptive\b/);
-  await expect(placement).toHaveClass(/\braised\b/);
+test('does not load advertising', async ({ page }) => {
+  await expect(page.locator('[data-ea-publisher]')).toHaveCount(0);
+  await expect(page.locator('script[src*="ethicalads"]')).toHaveCount(0);
 });
 
 test('supports zoom, dark mode, and a narrow viewport', async ({ page }) => {

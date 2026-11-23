@@ -22,9 +22,6 @@
     <link rel="preload" id="webassembly" />
     <script type="importmap"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
-    <link rel="preconnect" href="https://media.ethicalads.io" crossorigin="anonymous" />
-    <link rel="dns-prefetch" href="https://server.ethicalads.io" />
-    <script async fetchpriority="low" src="https://media.ethicalads.io/media/client/ethicalads.min.js"></script>
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" as="style" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="manifest.json" rel="manifest" />
@@ -154,22 +151,6 @@
             }
         }
 
-        .ethical-ad-slot {
-            display: flex;
-            justify-content: center;
-            min-height: 72px;
-        }
-
-        [data-ea-publisher] {
-            min-height: 72px;
-        }
-
-        [data-ea-publisher].loaded .ea-content,
-        [data-ea-type].loaded .ea-content {
-            margin: 0 !important;
-            border: 1px solid var(--color-border) !important;
-        }
-
         @media (width <= 767px) {
             .page-header {
                 padding: 2.5rem 0 2rem;
@@ -228,9 +209,6 @@
                 border-color: CanvasText;
             }
 
-            .ethical-ad-slot [data-ea-publisher].loaded .ea-content {
-                border: 1px solid CanvasText;
-            }
         }
     </style>
 </head>
@@ -248,13 +226,6 @@
             </div>
         </div>
         <div class="container pt-4 pb-5">
-            <aside class="ethical-ad-slot mb-4" aria-label="Advertisement">
-                <div id="decompressor-top"
-                     class="adaptive raised"
-                     data-ea-publisher="swimburger-net"
-                     data-ea-type="text"
-                     data-ea-keywords="dotnet|blazor|webassembly|compression"></div>
-            </aside>
             <div class="feature-grid">
                 <div class="feature-item"><span class="feature-icon">🔒</span> Files processed on your device</div>
                 <div class="feature-item"><span class="feature-icon">🚫</span> No files transmitted</div>
