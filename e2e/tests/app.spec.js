@@ -15,6 +15,14 @@ test('page title and heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Online GZIP de\/compressor/i })).toBeVisible();
 });
 
+test('uses the adaptive raised EthicalAds theme', async ({ page }) => {
+  const placement = page.locator('.ethical-ad-slot [data-ea-publisher]');
+
+  await expect(placement).toHaveCount(1);
+  await expect(placement).toHaveClass(/\badaptive\b/);
+  await expect(placement).toHaveClass(/\braised\b/);
+});
+
 test('supports zoom, dark mode, and a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
