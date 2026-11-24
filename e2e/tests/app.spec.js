@@ -13,6 +13,14 @@ test.beforeEach(async ({ page }) => {
 test('page title and heading', async ({ page }) => {
   await expect(page).toHaveTitle(/GZIP/i);
   await expect(page.getByRole('heading', { name: /Online GZIP de\/compressor/i })).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://gzip.swimburger.net/');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://gzip.swimburger.net/SocialImage.png');
+  await expect(page.locator('link[href*="cdn.jsdelivr.net"], script[src*="cdn.jsdelivr.net"]')).toHaveCount(0);
+  await expect(page.locator('img[src^="https://swimburger.net/content"], link[href^="https://swimburger.net/content"]')).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Compression format' }).locator('li')).toHaveCount(5);
+  const workerSource = await (await page.request.get('/compression-worker.js')).text();
+  expect(workerSource).not.toContain('https://');
+  expect(workerSource).toContain('./vendor/brotli-wasm/index.web.js');
 });
 
 test('does not load advertising', async ({ page }) => {
@@ -222,6 +230,9 @@ for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
     test(`page title and heading reflect ${format}`, async ({ page }) => {
       await expect(page).toHaveTitle(new RegExp(displayName, 'i'));
       await expect(page.getByRole('heading', { name: new RegExp(`Online ${displayName} de/compressor`, 'i') })).toBeVisible();
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://${format}.swimburger.net/`);
+      await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', `https://${format}.swimburger.net/`);
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `https://${format}.swimburger.net/SocialImage.png`);
     });
 
     test(`intro paragraph mentions ${format}`, async ({ page }) => {

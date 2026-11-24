@@ -69,6 +69,16 @@ test('published cache and security headers match hosting policy', async ({ reque
   const index = await request.get('http://localhost:5002/');
   expect(index.headers()['x-content-type-options']).toBe('nosniff');
   expect(index.headers()['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  expect(index.headers()['content-security-policy']).toBe("base-uri 'self'; object-src 'none'; frame-ancestors 'none'");
+  expect(index.headers()['permissions-policy']).toContain('camera=()');
+  expect(index.headers()['x-frame-options']).toBe('DENY');
+
+  const robots = await request.get('http://localhost:5002/robots.txt');
+  expect(robots.headers()['content-type']).toContain('text/plain');
+  expect(await robots.text()).toBe('User-agent: *\nAllow: /\n');
+
+  const socialImage = await request.get('http://localhost:5002/SocialImage.png');
+  expect(socialImage.headers()['content-type']).toContain('image/png');
 
   const serviceWorker = await request.get('http://localhost:5002/service-worker.js');
   expect(serviceWorker.headers()['cache-control']).toBe('no-cache');

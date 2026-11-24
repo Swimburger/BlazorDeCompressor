@@ -6,21 +6,23 @@
 @inject NavigationManager NavManager
 @inject LazyAssemblyLoader AssemblyLoader
 
-<ul class="nav nav-pills mb-4 pb-1 border-bottom" role="navigation" aria-label="Compression format">
-    @foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
-    {
-        <li class="nav-item">
-            @if (fmt == _format)
-            {
-                <span class="nav-link active" aria-current="page">@FormatDisplayName(fmt)</span>
-            }
-            else
-            {
-                <a class="nav-link" href="@_formatUrls[fmt]">@FormatDisplayName(fmt)</a>
-            }
-        </li>
-    }
-</ul>
+<nav aria-label="Compression format">
+    <ul class="nav nav-pills mb-4 pb-1 border-bottom">
+        @foreach (var fmt in new[] { CompressionFormat.GZip, CompressionFormat.Brotli, CompressionFormat.Deflate, CompressionFormat.ZLib, CompressionFormat.ZStd })
+        {
+            <li class="nav-item">
+                @if (fmt == _format)
+                {
+                    <span class="nav-link active" aria-current="page">@FormatDisplayName(fmt)</span>
+                }
+                else
+                {
+                    <a class="nav-link" href="@_formatUrls[fmt]">@FormatDisplayName(fmt)</a>
+                }
+            </li>
+        }
+    </ul>
+</nav>
 
 <div class="btn-group mb-4" role="group" aria-label="Mode">
     <input id="radio-compress" class="btn-check" type="radio" autocomplete="off"

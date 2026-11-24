@@ -1,4 +1,4 @@
-import brotliWasm from 'https://cdn.jsdelivr.net/npm/brotli-wasm@3.0.1/index.web.js';
+import brotliWasm from './vendor/brotli-wasm/index.web.js';
 
 const brotliReady = brotliWasm;
 

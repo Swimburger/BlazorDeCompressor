@@ -9,21 +9,29 @@
     <title>GZIP decompress/compress files from your browser</title>
     <meta name="description"
         content="Use this online GZIP tool to compress and decompress files right in the browser" />
+    <link rel="canonical" href="https://gzip.swimburger.net/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gzip.swimburger.net/" />
     <meta property="og:title" content="GZIP decompress/compress files from your browser" />
     <meta name="twitter:title" content="GZIP decompress/compress files from your browser" />
     <meta property="og:description"
         content="Use this online GZIP tool to compress and decompress files right in the browser" />
     <meta name="twitter:description"
         content="Use this online GZIP tool to compress and decompress files right in the browser" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://gzip.swimburger.net/SocialImage.png" />
+    <meta property="og:image:alt" content="The online browser compression tool with GZIP format and file controls." />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@RealSwimburger" />
     <meta name="twitter:creator" content="@RealSwimburger" />
+    <meta name="twitter:image" content="https://gzip.swimburger.net/SocialImage.png" />
+    <meta name="twitter:image:alt" content="The online browser compression tool with GZIP format and file controls." />
     <base href="/" />
     <link rel="preload" id="webassembly" />
     <script type="importmap"></script>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" as="style" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
     <link href="manifest.json" rel="manifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="512x512" href="/assets/512x512.png" />
@@ -35,6 +43,7 @@
             --color-surface: #fff;
             --color-surface-subtle: #eee;
             --color-text: #212529;
+            --color-footer-link: #0759ad;
             --color-border: #767676;
             --color-focus: #0d6efd;
             --color-error-surface: #fff3cd;
@@ -59,6 +68,7 @@
         }
 
         footer a {
+            color: var(--color-footer-link);
             text-decoration: underline;
         }
 
@@ -180,6 +190,7 @@
                 --color-surface: #17141a;
                 --color-surface-subtle: #2d2731;
                 --color-text: #f5f2f5;
+                --color-footer-link: #8bb9fe;
                 --color-border: #8c828e;
                 --color-focus: #6ea8fe;
                 --color-error-surface: #3a3115;
@@ -248,8 +259,8 @@
     </main>
     <footer class="footer mt-auto py-2">
         <div class="container d-flex align-items-center gap-3" style="font-size:.875rem">
-            <img src="https://swimburger.net/content/img/burger.svg" width="32" height="18" alt="Swimburger logo" />
-            <span>Tool by Niels Swimberghe — <a href="https://swimburger.net">swimburger.net</a> · <a href="https://twitter.com/RealSwimburger">X (Twitter)</a> · <a href="https://privacypolicies.com/privacy/view/95b2095f4609044d9618c21b06f5df75">Privacy Policy</a></span>
+            <img src="/assets/burger.svg" width="32" height="18" alt="Swimburger logo" />
+            <span>Tool by Niels Swimberghe — <a href="https://swimburger.net">swimburger.net</a> · <a href="https://x.com/RealSwimburger">X</a> · <a href="https://swimburger.net/privacy">Privacy Policy</a></span>
         </div>
     </footer>
     <script>
@@ -302,6 +313,12 @@
 
       const base = `/assets/${format}/`;
       const setHref = (sel, href) => { const el = document.querySelector(sel); if (el) el.href = href; };
+      const canonicalUrl = `https://${format}.swimburger.net/`;
+      const socialImageUrl = canonicalUrl + 'SocialImage.png';
+      setHref('link[rel="canonical"]', canonicalUrl);
+      set('meta[property="og:url"]', 'content', canonicalUrl);
+      set('meta[property="og:image"]', 'content', socialImageUrl);
+      set('meta[name="twitter:image"]', 'content', socialImageUrl);
       setHref('link[rel="apple-touch-icon"][sizes="180x180"]', base + 'apple-touch-icon.png');
       setHref('link[rel="apple-touch-icon"][sizes="512x512"]', base + '512x512.png');
       setHref('link[rel="icon"][sizes="32x32"]',               base + 'favicon-32x32.png');

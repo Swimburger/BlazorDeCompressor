@@ -7,12 +7,14 @@
   },
   "packageManager": "pnpm@12.21.0",
   "scripts": {
-    "build": "./build.sh",
+    "sync:brotli-wasm": "node scripts/sync-brotli-wasm.mjs",
+    "build": "pnpm run sync:brotli-wasm && ./build.sh",
     "build:cloudflare": "pnpm run build && cf build",
     "build:cloudflare:prebuilt": "cf build",
     "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt"
   },
   "devDependencies": {
+    "brotli-wasm": "3.0.1",
     "cf": "^1.0.0-beta.32",
     "wrangler": "^4.162.0"
   }
