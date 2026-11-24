@@ -11,6 +11,7 @@
     "build": "pnpm run sync:brotli-wasm && ./build.sh",
     "build:cloudflare": "pnpm run build && cf build",
     "build:cloudflare:prebuilt": "cf build",
+    "test:worker": "node --test tests/worker.test.mjs",
     "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt"
   },
   "devDependencies": {

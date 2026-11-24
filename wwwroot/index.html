@@ -5,6 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#17141a" media="(prefers-color-scheme: dark)" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>GZIP decompress/compress files from your browser</title>
     <meta name="description"
@@ -51,6 +53,8 @@
             --color-brand-soft: rgba(13, 110, 253, 0.08);
             --color-brand-softer: rgba(13, 110, 253, 0.04);
             --color-brand-border: rgba(13, 110, 253, 0.25);
+            --color-accent: #0d6efd;
+            accent-color: var(--color-accent);
         }
 
         body {
@@ -61,6 +65,17 @@
         :where(a, button, input):focus-visible {
             outline: 3px solid var(--color-focus);
             outline-offset: 3px;
+        }
+
+        .btn-check:focus-visible + .btn {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 3px;
+        }
+
+        :is(.btn, .nav-link):focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 3px;
+            box-shadow: none;
         }
 
         footer {
@@ -111,6 +126,11 @@
             background-color: var(--color-brand-soft);
         }
 
+        .drop-zone:has(.drop-zone-input:focus-visible) {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 3px;
+        }
+
         .drop-zone-input {
             position: absolute;
             inset: 0;
@@ -118,6 +138,11 @@
             cursor: pointer;
             width: 100%;
             height: 100%;
+        }
+
+        .file-action {
+            min-block-size: 2rem;
+            min-inline-size: 4.5rem;
         }
 
         .page-header {
@@ -185,6 +210,12 @@
             }
         }
 
+        @media (pointer: coarse) {
+            .file-action {
+                min-block-size: 3rem;
+            }
+        }
+
         @media (prefers-color-scheme: dark) {
             :root {
                 --color-surface: #17141a;
@@ -198,15 +229,75 @@
                 --color-brand-soft: rgba(110, 168, 254, 0.16);
                 --color-brand-softer: rgba(110, 168, 254, 0.09);
                 --color-brand-border: rgba(110, 168, 254, 0.45);
+                --color-accent: #6ea8fe;
                 --bs-body-color: #f5f2f5;
                 --bs-body-bg: #17141a;
                 --bs-secondary-color: rgba(245, 242, 245, 0.75);
                 --bs-secondary-bg: #2d2731;
                 --bs-tertiary-bg: #211d24;
                 --bs-border-color: #8c828e;
+                --bs-primary-rgb: 110, 168, 254;
+                --bs-success-rgb: 117, 183, 152;
+                --bs-danger-rgb: 234, 134, 143;
+                --bs-link-color: #8bb9fe;
+                --bs-link-color-rgb: 139, 185, 254;
+                --bs-link-hover-color: #a8c7fa;
+                --bs-link-hover-color-rgb: 168, 199, 250;
                 --bs-list-group-color: #f5f2f5;
                 --bs-list-group-bg: #211d24;
                 --bs-list-group-border-color: #8c828e;
+            }
+
+            .btn-outline-primary {
+                --bs-btn-color: #6ea8fe;
+                --bs-btn-border-color: #6ea8fe;
+                --bs-btn-hover-color: #061b35;
+                --bs-btn-hover-bg: #6ea8fe;
+                --bs-btn-hover-border-color: #6ea8fe;
+                --bs-btn-active-color: #fff;
+                --bs-btn-active-bg: #0d6efd;
+                --bs-btn-active-border-color: #0d6efd;
+                --bs-btn-disabled-color: #8c828e;
+                --bs-btn-disabled-border-color: #8c828e;
+            }
+
+            .nav {
+                --bs-nav-link-color: #8bb9fe;
+                --bs-nav-link-hover-color: #a8c7fa;
+            }
+
+            .nav .nav-link:not(.active) {
+                color: #8bb9fe;
+            }
+
+            .nav .nav-link:not(.active):is(:hover, :focus-visible) {
+                color: #a8c7fa;
+            }
+
+            .btn-outline-secondary {
+                --bs-btn-color: #adb5bd;
+                --bs-btn-border-color: #8c828e;
+                --bs-btn-hover-color: #17141a;
+                --bs-btn-hover-bg: #adb5bd;
+                --bs-btn-hover-border-color: #adb5bd;
+                --bs-btn-active-color: #fff;
+                --bs-btn-active-bg: #6c757d;
+                --bs-btn-active-border-color: #6c757d;
+                --bs-btn-disabled-color: #8c828e;
+                --bs-btn-disabled-border-color: #8c828e;
+            }
+
+            .btn-outline-danger {
+                --bs-btn-color: #ea868f;
+                --bs-btn-border-color: #ea868f;
+                --bs-btn-hover-color: #2c0b0e;
+                --bs-btn-hover-bg: #ea868f;
+                --bs-btn-hover-border-color: #ea868f;
+                --bs-btn-active-color: #fff;
+                --bs-btn-active-bg: #dc3545;
+                --bs-btn-active-border-color: #dc3545;
+                --bs-btn-disabled-color: #8c828e;
+                --bs-btn-disabled-border-color: #8c828e;
             }
         }
 
@@ -220,6 +311,18 @@
                 border-color: CanvasText;
             }
 
+            .btn-check:checked + .btn {
+                color: HighlightText;
+                background-color: Highlight;
+                border-color: Highlight;
+            }
+
+            .drop-zone:focus-within,
+            .btn:focus-visible,
+            .btn-check:focus-visible + .btn {
+                outline-color: Highlight;
+            }
+
         }
     </style>
 </head>
@@ -231,8 +334,7 @@
                 <h1 class="display-5 fw-bold">Online GZIP de/compressor</h1>
                 <p id="intro-paragraph" class="lead mb-0">
                     This tool can compress and decompress files using the GZIP algorithm.
-                    The files are compressed/decompress right inside of your browser without transmitting the files to a
-                    server.
+                    Files are compressed and decompressed inside your browser without transmitting file contents to a server.
                 </p>
             </div>
         </div>
@@ -275,28 +377,32 @@
       const set = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el[attr] = val; };
       const labels = {
         brotli:  {
+          name:    'Brotli',
           title:   'Brotli decompress/compress files from your browser',
           desc:    'Use this online Brotli tool to compress and decompress files right in the browser',
           heading: 'Online Brotli de/compressor',
-          para:    'This tool can compress and decompress files using the Brotli algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+          para:    'This tool can compress and decompress files using the Brotli algorithm. Files are compressed and decompressed inside your browser without transmitting file contents to a server.'
         },
         deflate: {
+          name:    'Deflate',
           title:   'Deflate decompress/compress files from your browser',
           desc:    'Use this online Deflate tool to compress and decompress files right in the browser',
           heading: 'Online Deflate de/compressor',
-          para:    'This tool can compress and decompress files using the Deflate algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+          para:    'This tool can compress and decompress files using the Deflate algorithm. Files are compressed and decompressed inside your browser without transmitting file contents to a server.'
         },
         zlib: {
+          name:    'ZLib',
           title:   'ZLib decompress/compress files from your browser',
           desc:    'Use this online ZLib tool to compress and decompress files right in the browser',
           heading: 'Online ZLib de/compressor',
-          para:    'This tool can compress and decompress files using the ZLib algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+          para:    'This tool can compress and decompress files using the ZLib algorithm. Files are compressed and decompressed inside your browser without transmitting file contents to a server.'
         },
         zstd: {
+          name:    'Zstandard',
           title:   'Zstandard decompress/compress files from your browser',
           desc:    'Use this online Zstandard tool to compress and decompress files right in the browser',
           heading: 'Online Zstandard de/compressor',
-          para:    'This tool can compress and decompress files using the Zstandard algorithm. The files are compressed/decompressed right inside of your browser without transmitting the files to a server.'
+          para:    'This tool can compress and decompress files using the Zstandard algorithm. Files are compressed and decompressed inside your browser without transmitting file contents to a server.'
         }
       };
 
@@ -314,11 +420,16 @@
       const base = `/assets/${format}/`;
       const setHref = (sel, href) => { const el = document.querySelector(sel); if (el) el.href = href; };
       const canonicalUrl = `https://${format}.swimburger.net/`;
-      const socialImageUrl = canonicalUrl + 'SocialImage.png';
+      const socialImageUrl = canonicalUrl + `assets/${format}/512x512.png`;
       setHref('link[rel="canonical"]', canonicalUrl);
       set('meta[property="og:url"]', 'content', canonicalUrl);
       set('meta[property="og:image"]', 'content', socialImageUrl);
       set('meta[name="twitter:image"]', 'content', socialImageUrl);
+      set('meta[property="og:image:width"]', 'content', '512');
+      set('meta[property="og:image:height"]', 'content', '512');
+      set('meta[property="og:image:alt"]', 'content', `The online browser compression tool with ${l.name} format and file controls.`);
+      set('meta[name="twitter:image:alt"]', 'content', `The online browser compression tool with ${l.name} format and file controls.`);
+      set('meta[name="twitter:card"]', 'content', 'summary');
       setHref('link[rel="apple-touch-icon"][sizes="180x180"]', base + 'apple-touch-icon.png');
       setHref('link[rel="apple-touch-icon"][sizes="512x512"]', base + '512x512.png');
       setHref('link[rel="icon"][sizes="32x32"]',               base + 'favicon-32x32.png');

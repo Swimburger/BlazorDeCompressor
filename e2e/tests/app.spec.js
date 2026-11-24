@@ -4,6 +4,19 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+function contrastRatio(first, second) {
+  const luminance = (color) => {
+    const channels = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const lighter = Math.max(luminance(first), luminance(second));
+  const darker = Math.min(luminance(first), luminance(second));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   // Wait for Blazor WASM to finish loading
@@ -43,6 +56,75 @@ test('supports zoom, dark mode, and a narrow viewport', async ({ page }) => {
   await expect(page.locator('.feature-item')).toHaveCount(4);
 });
 
+test('dark mode covers controls, status colors, runtime changes, and the install shell', async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+
+  const themeColors = await page.locator('meta[name="theme-color"]').evaluateAll(elements =>
+    elements.map(element => ({ content: element.content, media: element.media })));
+  expect(themeColors).toEqual([
+    { content: '#ffffff', media: '(prefers-color-scheme: light)' },
+    { content: '#17141a', media: '(prefers-color-scheme: dark)' },
+  ]);
+
+  const colors = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    const background = getComputedStyle(document.body).backgroundColor;
+    document.body.append(probe);
+    const classColor = (className) => {
+      probe.className = className;
+      return getComputedStyle(probe).color;
+    };
+    const result = {
+      background,
+      link: getComputedStyle(document.querySelector('.nav-link:not(.active)')).color,
+      secondaryControl: getComputedStyle(document.querySelector('label[for="radio-smallest"]')).color,
+      success: classColor('text-success'),
+      danger: classColor('text-danger'),
+    };
+    probe.remove();
+    return result;
+  });
+  for (const [name, foreground] of Object.entries(colors).filter(([name]) => name !== 'background')) {
+    expect(contrastRatio(foreground, colors.background), `${name} text contrast (${foreground})`).toBeGreaterThanOrEqual(4.5);
+  }
+
+  const manifest = await (await page.request.get('/manifest.json')).json();
+  expect(manifest.background_color).toBe('#17141a');
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'dark-mode.txt', mimeType: 'text/plain', buffer: Buffer.from('dark mode'),
+  });
+  await page.locator('input[type="file"]').focus();
+  await expect(page.locator('.drop-zone')).toHaveCSS('outline-style', 'solid');
+  await expect(page.locator('.drop-zone')).toHaveCSS('outline-width', '3px');
+
+  const darkScreenshot = testInfo.outputPath('dark-mode-controls.png');
+  await page.screenshot({ path: darkScreenshot, fullPage: true });
+  await testInfo.attach('dark-mode-controls', { path: darkScreenshot, contentType: 'image/png' });
+
+  const darkBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  const lightBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(lightBackground).not.toBe(darkBackground);
+  expect(lightBackground).toBe('rgb(255, 255, 255)');
+});
+
+test('forced colors preserves selected controls, boundaries, and focus', async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active' });
+  await page.locator('#radio-decompress').focus();
+
+  const selected = page.locator('label[for="radio-compress"]');
+  const unselected = page.locator('label[for="radio-decompress"]');
+  expect(await selected.evaluate(element => getComputedStyle(element).backgroundColor))
+    .not.toBe(await unselected.evaluate(element => getComputedStyle(element).backgroundColor));
+  await expect(unselected).toHaveCSS('outline-style', 'solid');
+  await expect(page.locator('.drop-zone')).toHaveCSS('border-style', 'dashed');
+
+  const forcedScreenshot = testInfo.outputPath('forced-colors-controls.png');
+  await page.screenshot({ path: forcedScreenshot, fullPage: true });
+  await testInfo.attach('forced-colors-controls', { path: forcedScreenshot, contentType: 'image/png' });
+});
+
 test('compress mode is selected by default', async ({ page }) => {
   await expect(page.locator('#radio-compress')).toBeChecked();
   await expect(page.locator('#radio-decompress')).not.toBeChecked();
@@ -54,6 +136,57 @@ test('all four compression levels are shown in compress mode', async ({ page }) 
   await expect(page.locator('#radio-fastest')).toBeVisible();
   await expect(page.locator('#radio-no-compression')).toBeVisible();
   await expect(page.locator('#radio-optimal')).toBeChecked();
+  await expect(page.locator('#compression-level-help')).toContainText('Optimal balances file size and speed');
+});
+
+test('selected files can be removed before processing', async ({ page }) => {
+  await page.locator('input[type="file"]').setInputFiles([
+    { name: 'remove-me.txt', mimeType: 'text/plain', buffer: Buffer.from('remove') },
+    { name: 'keep-me.txt', mimeType: 'text/plain', buffer: Buffer.from('keep') },
+  ]);
+
+  await expect(page.locator('.list-group-item')).toHaveCount(2);
+  await page.locator('.list-group-item').filter({ hasText: 'remove-me.txt' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.locator('.list-group-item')).toHaveCount(1);
+  await expect(page.locator('.list-group-item')).toContainText('keep-me.txt');
+});
+
+test('completed files can be cleared as a batch', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.showSaveFilePicker = async () => null;
+    window.showDirectoryPicker = async () => null;
+  });
+  await page.reload();
+  await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+  await page.locator('input[type="file"]').setInputFiles([
+    { name: 'clear-a.txt', mimeType: 'text/plain', buffer: Buffer.from('alpha') },
+    { name: 'clear-b.txt', mimeType: 'text/plain', buffer: Buffer.from('beta') },
+  ]);
+
+  await page.getByRole('button', { name: 'Compress Files' }).click();
+  await expect(page.getByText('✔ Finished')).toHaveCount(2, { timeout: 10000 });
+  await page.getByRole('button', { name: 'Clear completed' }).click();
+  await expect(page.locator('.list-group-item')).toHaveCount(0);
+  await expect(page.getByText('No files selected')).toBeVisible();
+});
+
+test('an in-progress file can be cancelled', async ({ page }) => {
+  await page.goto('https://brotli.localhost:5001');
+  await page.waitForSelector('.spinner-border', { state: 'hidden', timeout: 30000 });
+  await page.evaluate(() => {
+    window.brotliCompress = () => new Promise(() => {});
+  });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'cancel-me.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('cancel this operation'),
+  });
+
+  await page.getByRole('button', { name: 'Compress Files' }).click();
+  await expect(page.getByText('Compressing…')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
 });
 
 test('compress button is disabled with no files selected', async ({ page }) => {
@@ -80,7 +213,7 @@ test('compress a file end-to-end', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('test-input.txt.gz');
 
   await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.list-group-item .text-muted')).toBeVisible();
+  await expect(page.locator('.list-group-item .text-muted.text-nowrap')).toBeVisible();
   await expect(page.locator('.list-group-item .badge').filter({ hasText: /smaller|larger/ })).toBeVisible();
 
   fs.unlinkSync(tmpFile);
@@ -105,7 +238,7 @@ test('decompress a file end-to-end', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('test-decompress.txt');
 
   await expect(page.getByText('✔ Finished')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.list-group-item .text-muted')).toBeVisible();
+  await expect(page.locator('.list-group-item .text-muted.text-nowrap')).toBeVisible();
 
   fs.unlinkSync(srcFile);
   fs.unlinkSync(gzFile);
@@ -232,7 +365,8 @@ for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
       await expect(page.getByRole('heading', { name: new RegExp(`Online ${displayName} de/compressor`, 'i') })).toBeVisible();
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://${format}.swimburger.net/`);
       await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', `https://${format}.swimburger.net/`);
-      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `https://${format}.swimburger.net/SocialImage.png`);
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `https://${format}.swimburger.net/assets/${format}/512x512.png`);
+      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary');
     });
 
     test(`intro paragraph mentions ${format}`, async ({ page }) => {
@@ -251,6 +385,8 @@ for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
     test(`manifest points to ${format} manifest`, async ({ page }) => {
       const manifest = await page.locator('link[rel="manifest"]').getAttribute('href');
       expect(manifest).toBe(`manifest-${format}.json`);
+      const manifestContent = await (await page.request.get(`/${manifest}`)).json();
+      expect(manifestContent.background_color).toBe('#17141a');
     });
   });
 }

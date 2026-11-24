@@ -24,40 +24,50 @@
     </ul>
 </nav>
 
-<div class="btn-group mb-4" role="group" aria-label="Mode">
+<fieldset class="border-0 p-0 mb-4" disabled="@isBatchProcessing">
+    <legend class="visually-hidden">Mode</legend>
+    <div class="btn-group" role="group">
     <input id="radio-compress" class="btn-check" type="radio" autocomplete="off"
+        name="compression-mode"
         checked="@(compressionMode == CompressionMode.Compress)"
         @onchange="@(() => compressionMode = CompressionMode.Compress)">
     <label class="btn btn-outline-primary px-4" for="radio-compress">Compress</label>
     <input id="radio-decompress" class="btn-check" type="radio" autocomplete="off"
+        name="compression-mode"
         checked="@(compressionMode == CompressionMode.Decompress)"
         @onchange="@(() => compressionMode = CompressionMode.Decompress)">
     <label class="btn btn-outline-primary px-4" for="radio-decompress">Decompress</label>
-</div>
+    </div>
+</fieldset>
 
 @if (compressionMode == CompressionMode.Compress)
 {
-<div class="mb-3">
-    <div class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</div>
-    <div class="btn-group d-flex btn-group-sm compression-level-group" role="group" aria-label="Compression level">
+<fieldset class="border-0 p-0 mb-3" disabled="@isBatchProcessing" aria-describedby="compression-level-help">
+    <legend class="form-label text-muted small text-uppercase fw-semibold ls-1">Compression Level</legend>
+    <p id="compression-level-help" class="text-muted small mb-2">Optimal balances file size and speed. Smallest Size may take longer; Fastest favors speed over size.</p>
+    <div class="btn-group d-flex btn-group-sm compression-level-group" role="group">
         <input id="radio-smallest" class="btn-check" type="radio" autocomplete="off"
+            name="compression-level"
             checked="@(compressionLevel == CompressionLevel.SmallestSize)"
             @onchange="@(() => compressionLevel = CompressionLevel.SmallestSize)">
         <label class="btn btn-outline-secondary w-100" for="radio-smallest">Smallest Size</label>
         <input id="radio-optimal" class="btn-check" type="radio" autocomplete="off"
+            name="compression-level"
             checked="@(compressionLevel == CompressionLevel.Optimal)"
             @onchange="@(() => compressionLevel = CompressionLevel.Optimal)">
         <label class="btn btn-outline-secondary w-100" for="radio-optimal">Optimal</label>
         <input id="radio-fastest" class="btn-check" type="radio" autocomplete="off"
+            name="compression-level"
             checked="@(compressionLevel == CompressionLevel.Fastest)"
             @onchange="@(() => compressionLevel = CompressionLevel.Fastest)">
         <label class="btn btn-outline-secondary w-100" for="radio-fastest">Fastest</label>
         <input id="radio-no-compression" class="btn-check" type="radio" autocomplete="off"
+            name="compression-level"
             checked="@(compressionLevel == CompressionLevel.NoCompression)"
             @onchange="@(() => compressionLevel = CompressionLevel.NoCompression)">
         <label class="btn btn-outline-secondary w-100" for="radio-no-compression">No Compression</label>
     </div>
-</div>
+</fieldset>
 }
 
 <div class="drop-zone mb-4 @(_dragCount > 0 ? "drop-zone--active" : "")"
@@ -75,6 +85,7 @@
     }
     <p class="text-muted small mb-0">or drag and drop here</p>
     <InputFile OnChange="OnFilesChange" multiple class="drop-zone-input"
+        disabled="@isBatchProcessing"
         aria-label="@(compressionMode == CompressionMode.Compress ? $"Choose files to compress to {FormatName}" : $"Choose {FormatName} files to decompress")"
         accept="@(compressionMode == CompressionMode.Decompress ? Extension : "")" />
 </div>
@@ -82,37 +93,68 @@
 <div class="mb-3">
     @if (compressionMode == CompressionMode.Compress)
     {
-        <button class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Compress Files</button>
+        <button class="btn btn-primary btn-lg w-100" @onclick="CompressFiles" disabled="@(!AnyReadyFiles || !IsFormatReady || isBatchProcessing)">Compress Files</button>
     }
     else
     {
-        <button class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!anyFiles || !IsFormatReady)">Decompress Files</button>
+        <button class="btn btn-primary btn-lg w-100" @onclick="DecompressFiles" disabled="@(!AnyReadyFiles || !IsFormatReady || isBatchProcessing)">Decompress Files</button>
     }
     @if (!IsFormatReady)
     {
         <div class="text-muted small text-center mt-1" role="status">Loading Zstandard module…</div>
     }
-    else if (!anyFiles)
+    else if (files.Count == 0)
     {
         <div class="text-danger small text-center mt-1" role="status">No files selected</div>
     }
 </div>
 
-<ul class="list-group">
+@if (files.Count > 0)
+{
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <p class="text-muted small mb-0" role="status" aria-live="polite" aria-atomic="true">@FileSummary</p>
+        @if (files.Any(file => file.Status == "Finished"))
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm file-action" @onclick="ClearCompleted">Clear completed</button>
+        }
+    </div>
+}
+
+<ul class="list-group" aria-label="Selected files">
 @foreach (var file in files)
 {
     <li class="list-group-item d-flex align-items-center gap-2 py-2">
-        <span class="text-truncate flex-grow-1 small fw-medium">@file.OriginalName</span>
+        <span id="@($"file-name-{file.Id}")" class="text-truncate flex-grow-1 small fw-medium">
+            @file.OriginalName
+            @if (file.NewName is not null)
+            {
+                <span class="text-muted"> → @file.NewName</span>
+            }
+            @if (file.OutputNameAdjusted)
+            {
+                <small class="d-block text-muted fw-normal">Renamed to avoid overwriting another output.</small>
+            }
+        </span>
         @if (file.Status == "To Process" && file.OriginalSize > WarnFileSizeBytes)
         {
             <small class="text-warning text-nowrap">⚠ >250 MB</small>
         }
+        @if(file.Status == "Queued")
+        {
+            <small class="text-muted text-nowrap">Queued</small>
+        }
         @if(file.Status == "Compressing" || file.Status == "Decompressing")
         {
-            <div class="spinner-grow text-primary spinner-grow-sm flex-shrink-0" role="status">
-                <span class="visually-hidden">@file.Status</span>
-            </div>
+            <div class="spinner-grow text-primary spinner-grow-sm flex-shrink-0" aria-hidden="true"></div>
             <small class="text-muted text-nowrap">@file.Status…</small>
+        }
+        @if(file.Status == "Cancelling")
+        {
+            <small class="text-muted text-nowrap">Cancelling…</small>
+        }
+        @if(file.Status == "Cancelled")
+        {
+            <small class="text-muted text-nowrap">Cancelled</small>
         }
         @if(file.Status.StartsWith("Error"))
         {
@@ -127,6 +169,16 @@
                 <span class="@RatioBadgeCss(file.OriginalSize, file.OutputSize) ms-1">@RatioText(file.OriginalSize, file.OutputSize)</span>
             }
         }
+        @if (IsProcessing(file))
+        {
+            <button type="button" class="btn btn-outline-danger btn-sm file-action"
+                aria-describedby="@($"file-name-{file.Id}")" @onclick="@(() => CancelFile(file))">Cancel</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm file-action"
+                aria-describedby="@($"file-name-{file.Id}")" @onclick="@(() => RemoveFile(file))">Remove</button>
+        }
     </li>
 }
 </ul>
@@ -139,12 +191,23 @@
     private List<Models.File> files = new List<Models.File>();
     private CompressionFormat _format = CompressionFormat.GZip;
     private int _dragCount;
-    private bool anyFiles;
+    private bool isBatchProcessing;
     private readonly Dictionary<CompressionFormat, string> _formatUrls = new();
     private Type? _zstdStreamFactory;
     private bool IsFormatReady => _format != CompressionFormat.ZStd || _zstdStreamFactory is not null;
     private const long WarnFileSizeBytes = 250L * 1024 * 1024;
     private static readonly SemaphoreSlim _semaphore = new(4, 4);
+    private bool AnyReadyFiles => files.Any(file => file.Status == "To Process");
+    private string FileSummary
+    {
+        get
+        {
+            var processing = files.Count(IsProcessing);
+            var finished = files.Count(file => file.Status == "Finished");
+            var cancelled = files.Count(file => file.Status == "Cancelled");
+            return $"{files.Count} file{(files.Count == 1 ? "" : "s")} selected. {processing} processing, {finished} finished, {cancelled} cancelled.";
+        }
+    }
 
     private static string FormatSlug(CompressionFormat fmt) => fmt switch
     {
@@ -284,6 +347,8 @@
 
     private void OnFilesChange(InputFileChangeEventArgs e)
     {
+        foreach (var existingFile in files)
+            existingFile.Cancellation.Dispose();
         files.Clear();
         files.AddRange(e.GetMultipleFiles(int.MaxValue).Select(f => new Models.File
         {
@@ -292,7 +357,61 @@
             OriginalSize = f.Size,
             Status = "To Process"
         }));
-        anyFiles = files.Count > 0;
+    }
+
+    private static bool IsProcessing(Models.File file) =>
+        file.Status is "Queued" or "Compressing" or "Decompressing" or "Cancelling";
+
+    private void RemoveFile(Models.File file)
+    {
+        if (IsProcessing(file)) return;
+        file.Cancellation.Dispose();
+        files.Remove(file);
+    }
+
+    private void CancelFile(Models.File file)
+    {
+        if (!IsProcessing(file) || file.Status == "Cancelling") return;
+        file.Status = "Cancelling";
+        file.Cancellation.Cancel();
+    }
+
+    private void ClearCompleted()
+    {
+        foreach (var file in files.Where(file => file.Status == "Finished").ToList())
+        {
+            file.Cancellation.Dispose();
+            files.Remove(file);
+        }
+    }
+
+    private string DecompressedFileName(string originalName)
+    {
+        if (originalName.EndsWith(Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            var withoutExtension = originalName[..^Extension.Length];
+            return string.IsNullOrWhiteSpace(withoutExtension) ? "decompressed-file" : withoutExtension;
+        }
+
+        return string.IsNullOrWhiteSpace(originalName) ? "decompressed-file" : $"{originalName}.decompressed";
+    }
+
+    private static void AssignUniqueOutputNames(IReadOnlyList<Models.File> selectedFiles, Func<Models.File, string> nameFactory)
+    {
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in selectedFiles)
+        {
+            var requestedName = nameFactory(file);
+            var extension = Path.GetExtension(requestedName);
+            var stem = extension.Length == 0 ? requestedName : requestedName[..^extension.Length];
+            var uniqueName = requestedName;
+            var suffix = 2;
+            while (!usedNames.Add(uniqueName))
+                uniqueName = $"{stem} ({suffix++}){extension}";
+
+            file.NewName = uniqueName;
+            file.OutputNameAdjusted = !string.Equals(uniqueName, requestedName, StringComparison.Ordinal);
+        }
     }
 
     private async Task<IJSObjectReference?> TryGetFileSystemHandle(string identifier, params object?[] args)
@@ -309,36 +428,41 @@
 
     private async Task CompressFiles()
     {
-        var newNames = files.Select(f => $"{f.OriginalName}{Extension}").ToList();
+        var selectedFiles = files.Where(file => file.Status == "To Process").ToList();
+        if (selectedFiles.Count == 0) return;
+        AssignUniqueOutputNames(selectedFiles, file => $"{file.OriginalName}{Extension}");
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
-        if (newNames.Count == 1)
-            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", newNames[0]);
-        else if (newNames.Count > 1)
+        if (selectedFiles.Count == 1)
+            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", selectedFiles[0].NewName);
+        else
             dirHandle = await TryGetFileSystemHandle("getDirectoryHandle");
 
+        foreach (var file in selectedFiles)
+            file.Status = "Queued";
+        isBatchProcessing = true;
         var tasks = new List<Task>();
-        foreach (var file in files)
+        foreach (var file in selectedFiles)
         {
             var task = Task.Run(async () =>
             {
                 MemoryStream? outputStream = null;
                 try
                 {
-                    await _semaphore.WaitAsync();
+                    var cancellationToken = file.Cancellation.Token;
+                    await _semaphore.WaitAsync(cancellationToken);
                     try
                     {
                         file.Status = "Compressing";
-                        file.NewName = $"{file.OriginalName}{Extension}";
                         await InvokeAsync(StateHasChanged);
 
                         var browserFile = file.BrowserFile;
-                        using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                        using var inputStream = browserFile.OpenReadStream(long.MaxValue, cancellationToken);
                         if (_format == CompressionFormat.Brotli)
                         {
                             using var ms = new MemoryStream();
-                            await inputStream.CopyToAsync(ms);
-                            var compressed = await JS.InvokeAsync<byte[]>("brotliCompress", ms.ToArray(), ToBrotliQuality(compressionLevel));
+                            await inputStream.CopyToAsync(ms, cancellationToken);
+                            var compressed = await JS.InvokeAsync<byte[]>("brotliCompress", cancellationToken, [ms.ToArray(), ToBrotliQuality(compressionLevel)]);
                             outputStream = new MemoryStream(compressed);
                         }
                         else
@@ -346,13 +470,14 @@
                             outputStream = new MemoryStream();
                             using (var compressionStream = CreateCompressStream(outputStream, compressionLevel))
                             {
-                                await inputStream.CopyToAsync(compressionStream);
+                                await inputStream.CopyToAsync(compressionStream, cancellationToken);
                             }
                         }
                         file.OutputSize = outputStream.Length;
                     }
                     finally { _semaphore.Release(); }
 
+                    cancellationToken.ThrowIfCancellationRequested();
                     outputStream.Position = 0;
                     using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
                     if (singleHandle is not null)
@@ -364,6 +489,10 @@
 
                     file.Status = "Finished";
                 }
+                catch (OperationCanceledException)
+                {
+                    file.Status = "Cancelled";
+                }
                 catch(Exception ex){
                     file.Status = $"Error: {ex.Message}";
                 }
@@ -373,55 +502,68 @@
             tasks.Add(task);
         }
 
-        await Task.WhenAll(tasks);
-        if (singleHandle is not null) await singleHandle.DisposeAsync();
-        if (dirHandle is not null) await dirHandle.DisposeAsync();
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            isBatchProcessing = false;
+            if (singleHandle is not null) await singleHandle.DisposeAsync();
+            if (dirHandle is not null) await dirHandle.DisposeAsync();
+        }
     }
 
     private async Task DecompressFiles()
     {
-        var newNames = files.Select(f => f.OriginalName.Replace(Extension, "")).ToList();
+        var selectedFiles = files.Where(file => file.Status == "To Process").ToList();
+        if (selectedFiles.Count == 0) return;
+        AssignUniqueOutputNames(selectedFiles, file => DecompressedFileName(file.OriginalName));
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
-        if (newNames.Count == 1)
-            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", newNames[0]);
-        else if (newNames.Count > 1)
+        if (selectedFiles.Count == 1)
+            singleHandle = await TryGetFileSystemHandle("getSaveFileHandle", selectedFiles[0].NewName);
+        else
             dirHandle = await TryGetFileSystemHandle("getDirectoryHandle");
 
+        foreach (var file in selectedFiles)
+            file.Status = "Queued";
+        isBatchProcessing = true;
         var tasks = new List<Task>();
-        foreach (var file in files)
+        foreach (var file in selectedFiles)
         {
             var task = Task.Run(async () =>
             {
                 MemoryStream? outputStream = null;
                 try
                 {
-                    await _semaphore.WaitAsync();
+                    var cancellationToken = file.Cancellation.Token;
+                    await _semaphore.WaitAsync(cancellationToken);
                     try
                     {
                         file.Status = "Decompressing";
-                        file.NewName = file.OriginalName.Replace(Extension, "");
                         await InvokeAsync(StateHasChanged);
 
                         var browserFile = file.BrowserFile;
-                        using var inputStream = browserFile.OpenReadStream(long.MaxValue);
+                        using var inputStream = browserFile.OpenReadStream(long.MaxValue, cancellationToken);
                         if (_format == CompressionFormat.Brotli)
                         {
                             using var ms = new MemoryStream();
-                            await inputStream.CopyToAsync(ms);
-                            var decompressed = await JS.InvokeAsync<byte[]>("brotliDecompress", ms.ToArray());
+                            await inputStream.CopyToAsync(ms, cancellationToken);
+                            var decompressed = await JS.InvokeAsync<byte[]>("brotliDecompress", cancellationToken, [ms.ToArray()]);
                             outputStream = new MemoryStream(decompressed);
                         }
                         else
                         {
                             outputStream = new MemoryStream();
                             using var decompressionStream = CreateDecompressStream(inputStream);
-                            await decompressionStream.CopyToAsync(outputStream);
+                            await decompressionStream.CopyToAsync(outputStream, cancellationToken);
                         }
                         file.OutputSize = outputStream.Length;
                     }
                     finally { _semaphore.Release(); }
 
+                    cancellationToken.ThrowIfCancellationRequested();
                     outputStream.Position = 0;
                     using var streamRef = new DotNetStreamReference(outputStream, leaveOpen: true);
                     if (singleHandle is not null)
@@ -433,6 +575,10 @@
 
                     file.Status = "Finished";
                 }
+                catch (OperationCanceledException)
+                {
+                    file.Status = "Cancelled";
+                }
                 catch(Exception ex){
                     file.Status = $"Error: {ex.Message}";
                 }
@@ -442,8 +588,15 @@
             tasks.Add(task);
         }
 
-        await Task.WhenAll(tasks);
-        if (singleHandle is not null) await singleHandle.DisposeAsync();
-        if (dirHandle is not null) await dirHandle.DisposeAsync();
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            isBatchProcessing = false;
+            if (singleHandle is not null) await singleHandle.DisposeAsync();
+            if (dirHandle is not null) await dirHandle.DisposeAsync();
+        }
     }
 }

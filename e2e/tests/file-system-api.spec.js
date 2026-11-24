@@ -122,6 +122,39 @@ test.describe('File System Access API', () => {
             tmpPaths.forEach(p => fs.existsSync(p) && fs.unlinkSync(p));
         }
     });
+
+    test('duplicate output names are deterministically renamed instead of overwritten', async ({ page }) => {
+        await page.locator('input[type="file"]').setInputFiles([
+            { name: 'duplicate.txt', mimeType: 'text/plain', buffer: Buffer.from('first') },
+            { name: 'duplicate.txt', mimeType: 'text/plain', buffer: Buffer.from('second') },
+        ]);
+
+        await page.getByRole('button', { name: 'Compress Files' }).click();
+        await expect(page.getByText('✔ Finished')).toHaveCount(2, { timeout: 10000 });
+
+        const saved = await page.evaluate(() => window.__mockSavedFiles);
+        expect(Object.keys(saved).sort()).toEqual(['duplicate.txt (2).gz', 'duplicate.txt.gz']);
+        expect(gunzipSync(Buffer.from(saved['duplicate.txt.gz'])).toString()).toBe('first');
+        expect(gunzipSync(Buffer.from(saved['duplicate.txt (2).gz'])).toString()).toBe('second');
+        await expect(page.getByText('Renamed to avoid overwriting another output.')).toHaveCount(1);
+    });
+
+    test('decompression strips one final extension case-insensitively and uses safe fallbacks', async ({ page }) => {
+        await page.locator('label[for="radio-decompress"]').click();
+        await page.locator('input[type="file"]').setInputFiles([
+            { name: 'REPORT.GZ', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from('uppercase')) },
+            { name: '.gz', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from('empty stem')) },
+            { name: 'no-extension', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from('fallback')) },
+        ]);
+
+        await page.getByRole('button', { name: 'Decompress Files' }).click();
+        await expect(page.getByText('✔ Finished')).toHaveCount(3, { timeout: 10000 });
+
+        const saved = await page.evaluate(() => window.__mockSavedFiles);
+        expect(Buffer.from(saved.REPORT).toString()).toBe('uppercase');
+        expect(Buffer.from(saved['decompressed-file']).toString()).toBe('empty stem');
+        expect(Buffer.from(saved['no-extension.decompressed']).toString()).toBe('fallback');
+    });
 });
 
 test.describe('File System Access API fallback', () => {
