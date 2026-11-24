@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compression tool social card</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 1200px; height: 630px; margin: 0; overflow: hidden; }
+    body {
+      color: #f8fafc;
+      background:
+        radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--accent) 38%, transparent) 0 9%, transparent 32%),
+        radial-gradient(circle at 13% 110%, color-mix(in srgb, var(--accent) 26%, transparent) 0 12%, transparent 35%),
+        linear-gradient(135deg, #081226 0%, #111b35 55%, #07101f 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .card {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 350px;
+      gap: 64px;
+      height: 100%;
+      padding: 58px 66px 52px;
+      isolation: isolate;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 24px;
+      z-index: -1;
+      border: 1px solid rgb(255 255 255 / 14%);
+      border-radius: 30px;
+      background: linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%));
+      box-shadow: 0 34px 90px rgb(0 0 0 / 34%);
+    }
+    .content { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      align-self: flex-start;
+      color: #cbd5e1;
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--accent-soft) 55%, white 15%);
+      border-radius: 10px;
+      color: #07101f;
+      background: var(--accent-soft);
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: -.08em;
+    }
+    h1 { max-width: 700px; margin: 0; font-size: 66px; line-height: .98; letter-spacing: -.055em; }
+    .format-name { display: block; margin-top: 12px; color: var(--accent-soft); font-size: 78px; }
+    .description { max-width: 680px; margin: 24px 0 0; color: #cbd5e1; font-size: 25px; line-height: 1.35; }
+    .benefits { display: flex; gap: 12px; margin: 0; padding: 0; list-style: none; }
+    .benefits li {
+      padding: 10px 15px;
+      border: 1px solid rgb(255 255 255 / 16%);
+      border-radius: 999px;
+      color: #e2e8f0;
+      background: rgb(15 23 42 / 62%);
+      font-size: 17px;
+      font-weight: 650;
+    }
+    .visual { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .file {
+      position: relative;
+      width: 300px;
+      height: 352px;
+      padding: 30px;
+      overflow: hidden;
+      border: 2px solid color-mix(in srgb, var(--accent-soft) 65%, white 15%);
+      border-radius: 30px;
+      background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 52%, #16213e), #101a31 72%);
+      box-shadow: 0 28px 70px color-mix(in srgb, var(--accent) 28%, transparent);
+      transform: rotate(2deg);
+    }
+    .file::after {
+      content: "";
+      position: absolute;
+      inset: auto -70px -100px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--accent-soft) 22%, transparent);
+    }
+    .file-tab { width: 82px; height: 12px; border-radius: 99px; background: var(--accent-soft); opacity: .88; }
+    .file-lines { display: grid; gap: 14px; margin-top: 56px; }
+    .file-lines span { height: 9px; border-radius: 99px; background: rgb(255 255 255 / 36%); }
+    .file-lines span:nth-child(2) { width: 78%; }
+    .file-lines span:nth-child(3) { width: 58%; }
+    .extension {
+      position: absolute;
+      right: 24px;
+      bottom: 24px;
+      z-index: 1;
+      padding: 10px 15px;
+      border-radius: 12px;
+      color: #07101f;
+      background: var(--accent-soft);
+      font-size: 25px;
+      font-weight: 850;
+      letter-spacing: -.03em;
+    }
+    .hostname { margin-top: 26px; color: #e2e8f0; font-size: 19px; font-weight: 700; letter-spacing: .02em; }
+  </style>
+</head>
+<body>
+  <main class="card" aria-label="Social preview for an in-browser file compression tool">
+    <section class="content">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">S</span> Swimburger browser tools</div>
+      <div>
+        <h1>Compress &amp; decompress <span class="format-name" id="format-name">GZIP files</span></h1>
+        <p class="description">Fast, private file conversion that runs entirely inside your browser.</p>
+      </div>
+      <ul class="benefits" aria-label="Tool benefits">
+        <li>Private by design</li>
+        <li>No uploads</li>
+        <li>Works offline</li>
+      </ul>
+    </section>
+    <section class="visual" aria-hidden="true">
+      <div class="file">
+        <div class="file-tab"></div>
+        <div class="file-lines"><span></span><span></span><span></span></div>
+        <span class="extension" id="extension">.gz</span>
+      </div>
+      <div class="hostname" id="hostname">gzip.swimburger.net</div>
+    </section>
+  </main>
+</body>
+</html>

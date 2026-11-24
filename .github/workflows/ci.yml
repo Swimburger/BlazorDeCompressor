@@ -60,6 +60,9 @@ jobs:
       - name: Test Worker metadata
         run: pnpm run test:worker
 
+      - name: Test social image assets
+        run: pnpm run test:social
+
       - name: Install Playwright browsers
         working-directory: e2e
         run: pnpm exec playwright install --with-deps chromium

@@ -112,12 +112,13 @@
 @if (files.Count > 0)
 {
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-        <p class="text-muted small mb-0" role="status" aria-live="polite" aria-atomic="true">@FileSummary</p>
+        <p id="batch-summary" class="text-muted small mb-0">@FileSummary</p>
         @if (files.Any(file => file.Status == "Finished"))
         {
             <button type="button" class="btn btn-outline-secondary btn-sm file-action" @onclick="ClearCompleted">Clear completed</button>
         }
     </div>
+    <p id="batch-announcement" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">@batchAnnouncement</p>
 }
 
 <ul class="list-group" aria-label="Selected files">
@@ -192,6 +193,7 @@
     private CompressionFormat _format = CompressionFormat.GZip;
     private int _dragCount;
     private bool isBatchProcessing;
+    private string batchAnnouncement = "";
     private readonly Dictionary<CompressionFormat, string> _formatUrls = new();
     private Type? _zstdStreamFactory;
     private bool IsFormatReady => _format != CompressionFormat.ZStd || _zstdStreamFactory is not null;
@@ -205,8 +207,39 @@
             var processing = files.Count(IsProcessing);
             var finished = files.Count(file => file.Status == "Finished");
             var cancelled = files.Count(file => file.Status == "Cancelled");
-            return $"{files.Count} file{(files.Count == 1 ? "" : "s")} selected. {processing} processing, {finished} finished, {cancelled} cancelled.";
+            var failed = files.Count(IsFailed);
+
+            if (isBatchProcessing)
+                return $"Batch in progress: {processing} processing, {finished} completed, {cancelled} cancelled, {failed} failed.";
+
+            if (finished + cancelled + failed > 0 && !AnyReadyFiles)
+                return BuildBatchCompletionSummary(finished, cancelled, failed);
+
+            var operation = compressionMode == CompressionMode.Compress ? "compress" : "decompress";
+            return $"{files.Count} file{(files.Count == 1 ? "" : "s")} selected. Ready to {operation}.";
         }
+    }
+
+    private string BuildBatchCompletionSummary(int? finishedCount = null, int? cancelledCount = null, int? failedCount = null)
+    {
+        var completed = finishedCount ?? files.Count(file => file.Status == "Finished");
+        var cancelled = cancelledCount ?? files.Count(file => file.Status == "Cancelled");
+        var failed = failedCount ?? files.Count(IsFailed);
+        var summary = $"Batch complete: {completed} completed, {cancelled} cancelled, {failed} failed.";
+        if (completed == 0) return summary;
+
+        var completedFiles = files.Where(file => file.Status == "Finished").ToList();
+        var inputBytes = completedFiles.Sum(file => file.OriginalSize);
+        var outputBytes = completedFiles.Sum(file => file.OutputSize);
+        return $"{summary} Completed files: {FormatBytes(inputBytes)} input → {FormatBytes(outputBytes)} output, {SizeChangeText(inputBytes, outputBytes)}.";
+    }
+
+    private static string SizeChangeText(long inputBytes, long outputBytes)
+    {
+        if (inputBytes <= 0 || inputBytes == outputBytes) return "no size change";
+        var percentage = Math.Abs(1.0 - (double)outputBytes / inputBytes) * 100;
+        var amount = percentage < 1 ? "less than 1%" : $"{percentage:F0}%";
+        return outputBytes < inputBytes ? $"{amount} saved" : $"expanded by {amount}";
     }
 
     private static string FormatSlug(CompressionFormat fmt) => fmt switch
@@ -350,6 +383,7 @@
         foreach (var existingFile in files)
             existingFile.Cancellation.Dispose();
         files.Clear();
+        batchAnnouncement = "";
         files.AddRange(e.GetMultipleFiles(int.MaxValue).Select(f => new Models.File
         {
             BrowserFile = f,
@@ -362,11 +396,15 @@
     private static bool IsProcessing(Models.File file) =>
         file.Status is "Queued" or "Compressing" or "Decompressing" or "Cancelling";
 
+    private static bool IsFailed(Models.File file) =>
+        file.Status.StartsWith("Error", StringComparison.Ordinal);
+
     private void RemoveFile(Models.File file)
     {
         if (IsProcessing(file)) return;
         file.Cancellation.Dispose();
         files.Remove(file);
+        batchAnnouncement = "";
     }
 
     private void CancelFile(Models.File file)
@@ -383,6 +421,7 @@
             file.Cancellation.Dispose();
             files.Remove(file);
         }
+        batchAnnouncement = "";
     }
 
     private string DecompressedFileName(string originalName)
@@ -430,6 +469,7 @@
     {
         var selectedFiles = files.Where(file => file.Status == "To Process").ToList();
         if (selectedFiles.Count == 0) return;
+        batchAnnouncement = "";
         AssignUniqueOutputNames(selectedFiles, file => $"{file.OriginalName}{Extension}");
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
@@ -511,6 +551,8 @@
             isBatchProcessing = false;
             if (singleHandle is not null) await singleHandle.DisposeAsync();
             if (dirHandle is not null) await dirHandle.DisposeAsync();
+            batchAnnouncement = BuildBatchCompletionSummary();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -518,6 +560,7 @@
     {
         var selectedFiles = files.Where(file => file.Status == "To Process").ToList();
         if (selectedFiles.Count == 0) return;
+        batchAnnouncement = "";
         AssignUniqueOutputNames(selectedFiles, file => DecompressedFileName(file.OriginalName));
         IJSObjectReference? singleHandle = null;
         IJSObjectReference? dirHandle = null;
@@ -597,6 +640,8 @@
             isBatchProcessing = false;
             if (singleHandle is not null) await singleHandle.DisposeAsync();
             if (dirHandle is not null) await dirHandle.DisposeAsync();
+            batchAnnouncement = BuildBatchCompletionSummary();
+            await InvokeAsync(StateHasChanged);
         }
     }
 }

@@ -11,6 +11,8 @@
     "build": "pnpm run sync:brotli-wasm && ./build.sh",
     "build:cloudflare": "pnpm run build && cf build",
     "build:cloudflare:prebuilt": "cf build",
+    "generate:social": "node scripts/generate-social-images.mjs",
+    "test:social": "node --test tests/social-images.test.mjs",
     "test:worker": "node --test tests/worker.test.mjs",
     "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt"
   },

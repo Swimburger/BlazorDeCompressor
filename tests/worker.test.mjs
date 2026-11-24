@@ -21,10 +21,11 @@ for (const [slug, displayName] of formats) {
     assert.match(metadata.heading, new RegExp(displayName, "i"));
     assert.match(metadata.intro, new RegExp(displayName, "i"));
     assert.equal(new URL(metadata.socialImageUrl).hostname, `${slug}.swimburger.net`);
+    assert.equal(new URL(metadata.socialImageUrl).pathname, `/assets/social/${slug}.png`);
     assert.match(metadata.socialImageAlt, new RegExp(displayName, "i"));
-    assert.match(metadata.socialImageWidth, /^\d+$/);
-    assert.match(metadata.socialImageHeight, /^\d+$/);
-    assert.match(metadata.twitterCard, /^summary/);
+    assert.equal(metadata.socialImageWidth, "1200");
+    assert.equal(metadata.socialImageHeight, "630");
+    assert.equal(metadata.twitterCard, "summary_large_image");
   });
 }
 
@@ -51,18 +52,26 @@ class FakeHTMLRewriter {
   }
 }
 
-test("HTML rewriting changes crawler-visible metadata and page content", () => {
-  globalThis.HTMLRewriter = FakeHTMLRewriter;
-  const response = new Response("<html></html>", { headers: { "content-type": "text/html" } });
-  const result = rewriteCrawlerMetadata(response, "brotli.swimburger.net");
+for (const [slug, displayName] of formats) {
+  test(`${slug} HTML rewrite exposes its dedicated crawler social metadata`, () => {
+    globalThis.HTMLRewriter = FakeHTMLRewriter;
+    const response = new Response("<html></html>", { headers: { "content-type": "text/html" } });
+    const result = rewriteCrawlerMetadata(response, `${slug}.swimburger.net`);
 
-  assert.equal(result.changes.get("title:text"), "Brotli decompress/compress files from your browser");
-  assert.equal(result.changes.get('link[rel="canonical"]:href'), "https://brotli.swimburger.net/");
-  assert.equal(result.changes.get('meta[property="og:image"]:content'), "https://brotli.swimburger.net/assets/brotli/512x512.png");
-  assert.equal(result.changes.get("h1:text"), "Online Brotli de/compressor");
-  assert.match(result.changes.get("#intro-paragraph:text"), /Brotli algorithm/);
-  assert.equal(result.changes.get('link[rel="manifest"]:href'), "manifest-brotli.json");
-});
+    assert.equal(result.changes.get("title:text"), `${displayName} decompress/compress files from your browser`);
+    assert.equal(result.changes.get('link[rel="canonical"]:href'), `https://${slug}.swimburger.net/`);
+    assert.equal(result.changes.get('meta[property="og:image"]:content'), `https://${slug}.swimburger.net/assets/social/${slug}.png`);
+    assert.equal(result.changes.get('meta[name="twitter:image"]:content'), `https://${slug}.swimburger.net/assets/social/${slug}.png`);
+    assert.equal(result.changes.get('meta[property="og:image:width"]:content'), "1200");
+    assert.equal(result.changes.get('meta[property="og:image:height"]:content'), "630");
+    assert.equal(result.changes.get('meta[name="twitter:card"]:content'), "summary_large_image");
+    assert.match(result.changes.get('meta[property="og:image:alt"]:content'), new RegExp(displayName, "i"));
+    assert.equal(result.changes.get("h1:text"), `Online ${displayName} de/compressor`);
+    assert.match(result.changes.get("#intro-paragraph:text"), new RegExp(`${displayName} algorithm`, "i"));
+    if (slug !== "gzip")
+      assert.equal(result.changes.get('link[rel="manifest"]:href'), `manifest-${slug}.json`);
+  });
+}
 
 test("Worker fetches the static asset and rewrites HTML responses", async () => {
   globalThis.HTMLRewriter = FakeHTMLRewriter;

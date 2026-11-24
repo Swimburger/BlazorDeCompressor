@@ -27,7 +27,10 @@ test('page title and heading', async ({ page }) => {
   await expect(page).toHaveTitle(/GZIP/i);
   await expect(page.getByRole('heading', { name: /Online GZIP de\/compressor/i })).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://gzip.swimburger.net/');
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://gzip.swimburger.net/SocialImage.png');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://gzip.swimburger.net/assets/social/gzip.png');
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
   await expect(page.locator('link[href*="cdn.jsdelivr.net"], script[src*="cdn.jsdelivr.net"]')).toHaveCount(0);
   await expect(page.locator('img[src^="https://swimburger.net/content"], link[href^="https://swimburger.net/content"]')).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Compression format' }).locator('li')).toHaveCount(5);
@@ -165,9 +168,24 @@ test('completed files can be cleared as a batch', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Compress Files' }).click();
   await expect(page.getByText('✔ Finished')).toHaveCount(2, { timeout: 10000 });
+  await expect(page.locator('#batch-summary')).toContainText('Batch complete: 2 completed, 0 cancelled, 0 failed.');
+  await expect(page.locator('#batch-summary')).toContainText(/Completed files: 9 B input → \d+ B output, expanded by \d+%\./);
+  await expect(page.locator('#batch-announcement')).toHaveAttribute('aria-live', 'polite');
+  await expect(page.locator('#batch-announcement')).toHaveText(await page.locator('#batch-summary').textContent());
   await page.getByRole('button', { name: 'Clear completed' }).click();
   await expect(page.locator('.list-group-item')).toHaveCount(0);
   await expect(page.getByText('No files selected')).toBeVisible();
+});
+
+test('batch summary reports aggregate savings for completed files', async ({ page }) => {
+  await page.locator('input[type="file"]').setInputFiles([
+    { name: 'compressible-a.txt', mimeType: 'text/plain', buffer: Buffer.from('a'.repeat(1000)) },
+    { name: 'compressible-b.txt', mimeType: 'text/plain', buffer: Buffer.from('b'.repeat(1000)) },
+  ]);
+
+  await page.getByRole('button', { name: 'Compress Files' }).click();
+  await expect(page.getByText('✔ Finished')).toHaveCount(2, { timeout: 10000 });
+  await expect(page.locator('#batch-summary')).toContainText(/Completed files: 2\.0 KB input → \d+ B output, \d+% saved\./);
 });
 
 test('an in-progress file can be cancelled', async ({ page }) => {
@@ -186,6 +204,23 @@ test('an in-progress file can be cancelled', async ({ page }) => {
   await expect(page.getByText('Compressing…')).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByText('Cancelled', { exact: true })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('#batch-summary')).toHaveText('Batch complete: 0 completed, 1 cancelled, 0 failed.');
+  await expect(page.locator('#batch-announcement')).toHaveText('Batch complete: 0 completed, 1 cancelled, 0 failed.');
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
+});
+
+test('failed files are counted in the completed batch summary', async ({ page }) => {
+  await page.locator('label[for="radio-decompress"]').click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'invalid.gz',
+    mimeType: 'application/gzip',
+    buffer: Buffer.from('not a gzip stream'),
+  });
+
+  await page.getByRole('button', { name: 'Decompress Files' }).click();
+  await expect(page.locator('.list-group-item .text-danger')).toContainText('Error:', { timeout: 10000 });
+  await expect(page.locator('#batch-summary')).toHaveText('Batch complete: 0 completed, 0 cancelled, 1 failed.');
+  await expect(page.locator('#batch-announcement')).toHaveText('Batch complete: 0 completed, 0 cancelled, 1 failed.');
   await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
 });
 
@@ -365,8 +400,10 @@ for (const format of ['brotli', 'deflate', 'zlib', 'zstd']) {
       await expect(page.getByRole('heading', { name: new RegExp(`Online ${displayName} de/compressor`, 'i') })).toBeVisible();
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://${format}.swimburger.net/`);
       await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', `https://${format}.swimburger.net/`);
-      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `https://${format}.swimburger.net/assets/${format}/512x512.png`);
-      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary');
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `https://${format}.swimburger.net/assets/social/${format}.png`);
+      await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
+      await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
+      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
     });
 
     test(`intro paragraph mentions ${format}`, async ({ page }) => {
